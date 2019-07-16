@@ -135,10 +135,7 @@ mod tests {
     fn segment_length() {
         let curve = make_simple_curve();
         assert_eq!(curve.segment_length(0, |x| x.abs()), 9.5);
-        assert_eq!(
-            curve.segment_partial_length(0, 5.0, 5.5, |x| x.abs()),
-            2.5
-        );
+        assert_eq!(curve.segment_partial_length(0, 5.0, 5.5, |x| x.abs()), 2.5);
     }
 
     #[test]
