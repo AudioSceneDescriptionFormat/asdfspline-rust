@@ -6,12 +6,14 @@ cache: cargo
 
 before_script:
   - rustup component add rustfmt
+  - rustup component add clippy
 
 script:
   - cargo build --verbose --all
   - cargo test --verbose --all
   - cargo doc --verbose --all
   - cargo fmt --all -- --check
+  - cargo clippy --all-targets --all-features -- -D warnings
 
 branches:
   only:
