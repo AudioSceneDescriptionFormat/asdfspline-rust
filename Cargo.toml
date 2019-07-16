@@ -1,0 +1,13 @@
+[package]
+name = "asdfspline"
+version = "0.0.0"
+authors = ["Matthias Geier <Matthias.Geier@gmail.com>"]
+license = "MIT OR Apache-2.0"
+edition = "2018"
+
+[workspace]
+members = ["ffi"]
+
+[dependencies]
+num-traits = "0.2"
+superslice = "1"

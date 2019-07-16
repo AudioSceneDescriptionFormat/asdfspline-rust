@@ -1,0 +1,8 @@
+include_guard = "ASDFSPLINE_H"
+include_version = true
+language = "C"
+cpp_compat = true
+
+[parse]
+parse_deps = true
+include = ["asdfspline", "nalgebra-glm", "nalgebra"]
