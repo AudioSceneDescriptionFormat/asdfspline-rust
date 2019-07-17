@@ -21,7 +21,8 @@ class AsdfSpline:
             times.append(time)
             if position == 'closed':
                 if vertex:
-                    raise ValueError('When position is "closed", only time is allowed')
+                    raise ValueError(
+                        'When position is "closed", only time is allowed')
                 closed = True
                 break
             position = _np.asarray(position, dtype='float32')
@@ -47,7 +48,7 @@ class AsdfSpline:
                 raise TypeError('Bias values must be scalars')
             tcb.append((tension, continuity, bias))
             if vertex:
-                raise ValueError(f'Invalid key(s): {set(vertex)}')
+                raise ValueError('Invalid key(s): {}'.format(set(vertex)))
         if len(positions) < 2:
             raise ValueError('At least two vertices are needed')
         if not closed:
