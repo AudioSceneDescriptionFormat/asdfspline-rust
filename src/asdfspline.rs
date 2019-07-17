@@ -57,7 +57,7 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
                 fail!("Speed is only allowed if time is given");
             }
         }
-        if let &Some(last_time) = times.last().unwrap() {
+        if let Some(last_time) = *times.last().unwrap() {
             if closed {
                 assert!(speeds.len() + 1 == times.len());
                 t2s_times.push(last_time);
@@ -121,7 +121,7 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
         if tangent_length != zero() {
             tangent /= tangent_length;
         }
-        return tangent * speed;
+        tangent * speed
     }
 
     pub fn grid(&self) -> &[S] {
@@ -151,11 +151,12 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
         let u0 = self.path.grid()[index];
         let u1 = self.path.grid()[index + 1];
         let func = |u| self.path.segment_partial_length(index, u0, u, &get_length) - s;
-        return bisect(func, u0, u1, accuracy, 50);
+        bisect(func, u0, u1, accuracy, 50)
     }
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 

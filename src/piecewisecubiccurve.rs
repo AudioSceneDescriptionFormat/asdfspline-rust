@@ -103,6 +103,7 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 

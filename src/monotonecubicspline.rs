@@ -82,7 +82,7 @@ impl<S: Scalar> MonotoneCubicSpline<S> {
             // Within range, but no exact match
 
             let idx = range.end - 1;
-            let mut a = self.inner.segments()[idx].clone();
+            let mut a = self.inner.segments()[idx];
             a[0] -= value;
 
             let time = bisect(
@@ -102,6 +102,7 @@ impl<S: Scalar> MonotoneCubicSpline<S> {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
 
