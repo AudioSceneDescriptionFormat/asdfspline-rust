@@ -14,6 +14,7 @@ before_script:
   - rustup component add clippy
   - python3 -m pip install pip --upgrade --user
   - python3 -m pip install setuptools --user
+  - python3 -m pip install nbconvert ipykernel matplotlib --user
 
 script:
   - cargo build --verbose --all
@@ -23,6 +24,7 @@ script:
   - cargo clippy --all-targets --all-features -- -D warnings
   - cd python
   - python3 -m pip install -e . --user
+  - python3 -m nbconvert --execute examples/*.ipynb
 
 branches:
   only:
