@@ -4,9 +4,16 @@ rust:
 
 cache: cargo
 
+addons:
+  apt:
+    packages:
+      - python3-pip
+
 before_script:
   - rustup component add rustfmt
   - rustup component add clippy
+  - python3 -m pip install pip --upgrade --user
+  - python3 -m pip install setuptools --user
 
 script:
   - cargo build --verbose --all
@@ -14,6 +21,8 @@ script:
   - cargo doc --verbose --all
   - cargo fmt --all -- --check
   - cargo clippy --all-targets --all-features -- -D warnings
+  - cd python
+  - python3 -m pip install -e . --user
 
 branches:
   only:
