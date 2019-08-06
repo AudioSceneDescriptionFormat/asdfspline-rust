@@ -18,16 +18,6 @@ The generated HTML documentation can be accessed via
 [target/doc/asdfspline/index.html](index.html) and
 [target/doc/asdfspline_ffi/index.html](../asdfspline_ffi/index.html).
 
-## Updating the C Header File
-
-The file `ffi/asdfspline.h` was generated with
-[cbindgen](https://crates.io/crates/cbindgen) (`cargo install cbindgen`).
-After changes in the API functions, it can be updated with
-
-```
-cbindgen ffi -o ffi/asdfspline.h
-```
-
 ## Updating `README.md`
 
 Using [cargo-readme](https://github.com/livioribeiro/cargo-readme) (`cargo install cargo-readme`):
@@ -36,6 +26,4 @@ Using [cargo-readme](https://github.com/livioribeiro/cargo-readme) (`cargo insta
 cargo readme -o README.md
 ```
 
-## License
-
-See `Cargo.toml`.
+License: MIT OR Apache-2.0

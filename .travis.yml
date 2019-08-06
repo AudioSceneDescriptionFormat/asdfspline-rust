@@ -12,6 +12,7 @@ addons:
 before_script:
   - rustup component add rustfmt
   - rustup component add clippy
+  - cargo install cbindgen --force
   - python3 -m pip install pip --upgrade --user
   - python3 -m pip install setuptools --user
   - python3 -m pip install nbconvert ipykernel matplotlib --user
