@@ -7,8 +7,8 @@ use crate::{Scalar, Vector};
 
 // TODO: require alga::linear::NormedSpace to get norm() method for vectors?
 pub fn make_centripetal_kochanek_bartels_spline<S, V, F>(
-    vertices: impl Into<Vec<V>>,
-    tcb: impl AsRef<[[S; 3]]>,
+    positions: &[V],
+    tcb: &[[S; 3]],
     closed: bool,
     get_length: F,
 ) -> Result<PiecewiseCubicCurve<S, V>, Error>
@@ -17,40 +17,47 @@ where
     V: Vector<S>,
     F: Fn(V) -> S,
 {
-    let mut vertices = vertices.into();
-    if vertices.len() < 2 {
-        fail!("At least two vertices are required");
+    if positions.len() < 2 {
+        fail!("At least two positions are required");
     }
+    let mut positions = positions;
+    // Only used for "closed" splines:
+    let mut positions_vec;
     if closed {
-        vertices.push(vertices[0]);
-        vertices.push(vertices[1]);
+        positions_vec = Vec::with_capacity(positions.len() + 2);
+        positions_vec.extend(positions);
+        positions_vec.push(positions[0]);
+        positions_vec.push(positions[1]);
+        positions = &positions_vec;
+    } else {
+        // To avoid error: "use of possibly uninitialized `positions_vec`"
+        positions_vec = Vec::new();
     }
 
-    let tcb = tcb.as_ref();
-    if tcb.len() + 2 != vertices.len() {
-        fail!("There must be two more vertices than TCB values (except for closed curves)");
+    if tcb.len() + 2 != positions.len() {
+        fail!("There must be two more positions than TCB values (except for closed curves)");
     }
 
     // Create grid with centripetal parametrization
 
-    let mut grid = Vec::<S>::with_capacity(vertices.len());
+    let mut grid = Vec::<S>::with_capacity(positions.len());
     grid.push(zero());
-    for i in 0..vertices.len() - 1 {
-        let x0 = vertices[i];
-        let x1 = vertices[i + 1];
+    for i in 0..positions.len() - 1 {
+        let x0 = positions[i];
+        let x1 = positions[i + 1];
         let delta = get_length(x1 - x0).sqrt();
         if delta == zero() {
-            fail!("Repeated vertices are not possible");
+            fail!("Repeated positions are not possible");
         }
         grid.push(*grid.last().unwrap() + delta);
     }
     let mut tangents = Vec::<V>::new();
-    assert!(vertices.len() == grid.len());
-    assert!(vertices.len() == tcb.len() + 2);
-    for i in 0..vertices.len() - 2 {
-        let x_1 = vertices[i];
-        let x0 = vertices[i + 1];
-        let x1 = vertices[i + 2];
+    assert!(positions.len() == grid.len());
+    assert!(positions.len() == tcb.len() + 2);
+    for i in 0..positions.len() - 2 {
+        let x_1 = positions[i];
+        let x0 = positions[i + 1];
+        let x1 = positions[i + 2];
         let t_1 = grid[i];
         let t0 = grid[i + 1];
         let t1 = grid[i + 2];
@@ -74,14 +81,17 @@ where
         // Move last (outgoing) tangent to the beginning:
         tangents.rotate_right(1);
 
-        // Remove temporary vertex and grid elements:
-        vertices.pop();
+        // Remove temporary position and grid elements:
+        positions_vec.pop();
         grid.pop();
-    } else if vertices.len() == 2 {
+
+        // Update reference
+        positions = &positions_vec;
+    } else if positions.len() == 2 {
         // Straight line
         assert!(grid.len() == 2);
         assert!(tangents.is_empty());
-        let tangent = (vertices[1] - vertices[0]) / (grid[1] - grid[0]);
+        let tangent = (positions[1] - positions[0]) / (grid[1] - grid[0]);
         tangents.push(tangent);
         tangents.push(tangent);
     } else {
@@ -100,18 +110,18 @@ where
 
         tangents.insert(
             0,
-            natural_end_tangent(vertices[0], vertices[1], grid[0], grid[1], tangents[0]),
+            natural_end_tangent(positions[0], positions[1], grid[0], grid[1], tangents[0]),
         );
-        let last = vertices.len() - 1;
+        let last = positions.len() - 1;
         tangents.push(natural_end_tangent(
-            vertices[last - 1],
-            vertices[last],
+            positions[last - 1],
+            positions[last],
             grid[last - 1],
             grid[last],
             *tangents.last().unwrap(),
         ));
     }
-    make_cubic_hermite_spline(&vertices, &tangents, &grid)
+    make_cubic_hermite_spline(&positions, &tangents, &grid)
 }
 
 #[cfg(test)]
@@ -121,11 +131,11 @@ mod tests {
 
     #[test]
     fn test_1d() {
-        let vertices = [1.0f32, 2.0, 3.0].to_vec();
+        let positions = [1.0f32, 2.0, 3.0].to_vec();
         let tcb = [[4.0, 5.0, 6.0]];
         let closed = false;
-        let curve =
-            make_centripetal_kochanek_bartels_spline(vertices, &tcb, closed, |x| x.abs()).unwrap();
+        let curve = make_centripetal_kochanek_bartels_spline(&positions, &tcb, closed, |x| x.abs())
+            .unwrap();
         assert_eq!(curve.grid()[0], 0.0);
         assert_eq!(curve.evaluate(0.0), 1.0);
         assert_eq!(curve.evaluate(*curve.grid().last().unwrap()), 3.0);

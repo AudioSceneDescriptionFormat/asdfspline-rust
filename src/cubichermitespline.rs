@@ -5,24 +5,24 @@ use crate::{fail, Error};
 use crate::{Scalar, Vector};
 
 pub fn make_cubic_hermite_spline<S: Scalar, V: Vector<S>>(
-    vertices: &[V],
+    positions: &[V],
     tangents: &[V],
     grid: &[S],
 ) -> Result<PiecewiseCubicCurve<S, V>, Error> {
-    if vertices.len() < 2 {
-        fail!("At least 2 vertices are needed");
+    if positions.len() < 2 {
+        fail!("At least 2 positions are needed");
     }
-    let segments_len = vertices.len() - 1;
+    let segments_len = positions.len() - 1;
     if tangents.len() != 2 * segments_len {
         fail!("Exactly 2 tangents per segment are needed");
     }
-    if vertices.len() != grid.len() {
-        fail!("As many grid times as vertices are needed");
+    if positions.len() != grid.len() {
+        fail!("As many grid times as positions are needed");
     }
     let mut segments = Vec::with_capacity(segments_len);
     for i in 0..segments_len {
-        let x0 = vertices[i];
-        let x1 = vertices[i + 1];
+        let x0 = positions[i];
+        let x1 = positions[i + 1];
         let v0 = tangents[2 * i];
         let v1 = tangents[2 * i + 1];
         let t0 = grid[i];
@@ -53,10 +53,10 @@ mod tests {
 
     #[test]
     fn test_1d() {
-        let vertices = [1.0, 2.0];
+        let positions = [1.0, 2.0];
         let tangents = [3.0, 4.0];
         let grid = [5.0, 6.0];
-        let curve = make_cubic_hermite_spline(&vertices, &tangents, &grid).unwrap();
+        let curve = make_cubic_hermite_spline(&positions, &tangents, &grid).unwrap();
         assert_eq!(curve.grid(), &[5.0, 6.0]);
     }
 

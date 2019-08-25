@@ -16,22 +16,19 @@ pub struct AsdfSpline<S, V> {
 
 impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
     pub fn new<F: Fn(V) -> S>(
-        positions: impl Into<Vec<V>>,
-        times: impl AsRef<[Option<S>]>,
-        speeds: impl AsRef<[Option<S>]>,
-        tcb: impl AsRef<[[S; 3]]>,
+        positions: &[V],
+        times: &[Option<S>],
+        speeds: &[Option<S>],
+        tcb: &[[S; 3]],
         closed: bool,
         get_length: F,
     ) -> Result<AsdfSpline<S, V>, Error> {
-        let positions = positions.into();
         if positions.len() < 2 {
             fail!("At least two positions are required");
         }
-        let times = times.as_ref();
         if positions.len() + closed as usize != times.len() {
             fail!("Number of time values must be same as positions (one more for closed curves)");
         }
-        let speeds = speeds.as_ref();
         if speeds.len() != positions.len() {
             fail!("Same number of speed values as positions are required");
         }
@@ -87,7 +84,7 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
             if let Some(time) = t2s.get_time(lengths_at_missing_times[i]) {
                 grid.insert(missing_times[i], time);
             } else {
-                fail!("duplicate vertex without time");
+                fail!("duplicate position without time");
             }
         }
         let t2s = t2s.into_inner();
@@ -169,10 +166,10 @@ mod tests {
     #[test]
     fn simple_linear() {
         let s = AsdfSpline1::new(
-            [1.0, 2.0].to_vec(),
-            [None, Some(3.0)],
-            [None, None],
-            [],
+            &[1.0, 2.0],
+            &[None, Some(3.0)],
+            &[None, None],
+            &[],
             false,
             get_length,
         )
@@ -183,10 +180,10 @@ mod tests {
     #[test]
     fn simple_closed() {
         let s = AsdfSpline1::new(
-            [1.0, 2.0].to_vec(),
-            [None, None, Some(3.0)],
-            [None, None],
-            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            &[1.0, 2.0],
+            &[None, None, Some(3.0)],
+            &[None, None],
+            &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
             true,
             get_length,
         )
@@ -197,10 +194,10 @@ mod tests {
     #[test]
     fn closed_with_time() {
         let s = AsdfSpline1::new(
-            [1.0, 2.0].to_vec(),
-            [Some(3.0), Some(4.0), Some(5.0)],
-            [None, None],
-            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            &[1.0, 2.0],
+            &[Some(3.0), Some(4.0), Some(5.0)],
+            &[None, None],
+            &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
             true,
             get_length,
         )

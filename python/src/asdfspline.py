@@ -141,19 +141,19 @@ class CubicCurve3:
 
 class CentripetalKochanekBartelsSpline3(CubicCurve3):
 
-    def __init__(self, vertices, tcb=None, closed=False):
-        vertices = _np.ascontiguousarray(vertices, dtype='float32')
-        if vertices.ndim != 2:
+    def __init__(self, positions, tcb=None, closed=False):
+        positions = _np.ascontiguousarray(positions, dtype='float32')
+        if positions.ndim != 2:
             raise ValueError(
-                "Vertices must be two-dimensional (list of coordinate pairs)")
-        if vertices.shape[1] != 3:
-            raise ValueError("Vertices must be a list of coordinate pairs")
+                "Positions must be two-dimensional (list of coordinate pairs)")
+        if positions.shape[1] != 3:
+            raise ValueError("Positions must be a list of coordinate pairs")
 
         if tcb is None:
             tcb = 0, 0, 0
         tcb = _np.ascontiguousarray(tcb, dtype='float32')
         if tcb.ndim == 1:
-            N = len(vertices) if closed else len(vertices) - 2
+            N = len(positions) if closed else len(positions) - 2
             tcb = _np.tile(tcb, (N, 1))
         if tcb.ndim != 2:
             raise ValueError(
@@ -163,8 +163,8 @@ class CentripetalKochanekBartelsSpline3(CubicCurve3):
 
         ptr = _ffi.gc(
             _lib.asdf_centripetalkochanekbartelsspline3(
-                _ffi.from_buffer('float[]', vertices),
-                len(vertices),
+                _ffi.from_buffer('float[]', positions),
+                len(positions),
                 _ffi.from_buffer('float[]', tcb),
                 len(tcb),
                 closed,
@@ -206,19 +206,19 @@ class CubicCurve2:
 
 class CentripetalKochanekBartelsSpline2(CubicCurve2):
 
-    def __init__(self, vertices, tcb=None, closed=False):
-        vertices = _np.ascontiguousarray(vertices, dtype='float32')
-        if vertices.ndim != 2:
+    def __init__(self, positions, tcb=None, closed=False):
+        positions = _np.ascontiguousarray(positions, dtype='float32')
+        if positions.ndim != 2:
             raise ValueError(
-                "Vertices must be two-dimensional (list of coordinate pairs)")
-        if vertices.shape[1] != 2:
-            raise ValueError("Vertices must be a list of coordinate pairs")
+                "Positions must be two-dimensional (list of coordinate pairs)")
+        if positions.shape[1] != 2:
+            raise ValueError("Positions must be a list of coordinate pairs")
 
         if tcb is None:
             tcb = 0, 0, 0
         tcb = _np.ascontiguousarray(tcb, dtype='float32')
         if tcb.ndim == 1:
-            N = len(vertices) if closed else len(vertices) - 2
+            N = len(positions) if closed else len(positions) - 2
             tcb = _np.tile(tcb, (N, 1))
         if tcb.ndim != 2:
             raise ValueError(
@@ -228,8 +228,8 @@ class CentripetalKochanekBartelsSpline2(CubicCurve2):
 
         ptr = _ffi.gc(
             _lib.asdf_centripetalkochanekbartelsspline2(
-                _ffi.from_buffer('float[]', vertices),
-                len(vertices),
+                _ffi.from_buffer('float[]', positions),
+                len(positions),
                 _ffi.from_buffer('float[]', tcb),
                 len(tcb),
                 closed,

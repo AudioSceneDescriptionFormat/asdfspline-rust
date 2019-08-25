@@ -98,7 +98,7 @@ pub unsafe extern "C" fn asdf_asdfspline(
                 .map(|&t| if t.is_nan() { None } else { Some(t) })
                 .collect();
             let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-            let curve = AsdfSpline::new(positions, times, speeds, tcb, closed, |v| v.norm())
+            let curve = AsdfSpline::new(&positions, &times, &speeds, tcb, closed, |v| v.norm())
                 .unwrap_display();
             Box::into_raw(Box::new(curve))
         },
@@ -154,22 +154,22 @@ pub unsafe extern "C" fn asdf_asdfspline_grid(
 
 #[no_mangle]
 pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline3(
-    vertices: *const f32,
-    vertices_count: size_t,
+    positions: *const f32,
+    positions_count: size_t,
     tcb: *const f32,
     tcb_count: size_t,
     closed: bool,
 ) -> *mut AsdfCubicCurve3 {
     handle_errors(
         || {
-            let vertices = slice::from_raw_parts(vertices as *const [f32; 3], vertices_count);
-            let vertices: Vec<_> = vertices
+            let positions = slice::from_raw_parts(positions as *const [f32; 3], positions_count);
+            let positions: Vec<_> = positions
                 .iter()
                 .map(|coords| Vec3::from_column_slice(coords))
                 .collect();
             let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
             let curve =
-                make_centripetal_kochanek_bartels_spline(vertices, tcb, closed, |v| v.norm())
+                make_centripetal_kochanek_bartels_spline(&positions, tcb, closed, |v| v.norm())
                     .unwrap_display();
             Box::into_raw(Box::new(curve))
         },
@@ -179,22 +179,22 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline3(
 
 #[no_mangle]
 pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline2(
-    vertices: *const f32,
-    vertices_count: size_t,
+    positions: *const f32,
+    positions_count: size_t,
     tcb: *const f32,
     tcb_count: size_t,
     closed: bool,
 ) -> *mut AsdfCubicCurve2 {
     handle_errors(
         || {
-            let vertices = slice::from_raw_parts(vertices as *const [f32; 2], vertices_count);
-            let vertices: Vec<_> = vertices
+            let positions = slice::from_raw_parts(positions as *const [f32; 2], positions_count);
+            let positions: Vec<_> = positions
                 .iter()
                 .map(|coords| Vec2::from_column_slice(coords))
                 .collect();
             let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
             let curve =
-                make_centripetal_kochanek_bartels_spline(vertices, tcb, closed, |v| v.norm())
+                make_centripetal_kochanek_bartels_spline(&positions, tcb, closed, |v| v.norm())
                     .unwrap_display();
             Box::into_raw(Box::new(curve))
         },

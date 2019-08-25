@@ -55,7 +55,7 @@ pub trait Scalar: Float + NumAssign + FromPrimitive + Debug {}
 
 impl<T: Float + NumAssign + FromPrimitive + Debug> Scalar for T {}
 
-/// A trait that is automatically implemented for all types that can be used as vertices,
+/// A trait that is automatically implemented for all types that can be used as positions,
 /// polynomial coefficients, tangent vectors etc.
 pub trait Vector<S>
 where
