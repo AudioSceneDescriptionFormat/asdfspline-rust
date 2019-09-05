@@ -12,7 +12,7 @@ addons:
 before_script:
   - rustup component add rustfmt
   - rustup component add clippy
-  - cargo install cbindgen --force
+  - cargo install cbindgen cargo-readme --force
   - python3 -m pip install pip --upgrade --user
   - python3 -m pip install setuptools --user
   - python3 -m pip install nbconvert ipykernel matplotlib --user
@@ -23,6 +23,8 @@ script:
   - cargo doc --verbose --all
   - cargo fmt --all -- --check
   - cargo clippy --all-targets --all-features -- -D warnings
+  - cargo readme -o README.md
+  - test -z "$(git diff README.md)"
   - cd python
   - python3 -m pip install -e . --user
   - python3 -m nbconvert --execute examples/*.ipynb
