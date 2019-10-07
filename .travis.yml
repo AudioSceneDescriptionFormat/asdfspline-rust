@@ -29,9 +29,5 @@ script:
   - python3 -m pip install -e . --user
   - python3 -m nbconvert --execute examples/*.ipynb
 
-branches:
-  only:
-    - master
-
 notifications:
   email: false
