@@ -40,14 +40,12 @@ mod shapepreservingcubicspline;
 pub mod utilities;
 
 pub use crate::asdfspline::AsdfSpline;
-pub use crate::centripetalkochanekbartelsspline::make_centripetal_kochanek_bartels_spline;
-pub use crate::cubichermitespline::make_cubic_hermite_spline;
+pub use crate::centripetalkochanekbartelsspline::NewCentripetalKochanekBartels;
+pub use crate::cubichermitespline::NewHermite;
 pub use crate::error::Error;
 pub use crate::monotonecubicspline::MonotoneCubicSpline;
 pub use crate::piecewisecubiccurve::PiecewiseCubicCurve;
-pub use shapepreservingcubicspline::{
-    make_shape_preserving_cubic_spline, make_shape_preserving_cubic_spline_with_slopes,
-};
+pub use shapepreservingcubicspline::{NewShapePreserving, NewShapePreservingWithSlopes};
 
 /// A trait that is automatically implemented for all types that can be used as scalars,
 /// e.g. time values.

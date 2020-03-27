@@ -3,7 +3,7 @@ use superslice::Ext; // for slice::equal_range_by()
 
 use crate::utilities::bisect;
 use crate::{fail, Error, Scalar};
-use crate::{make_shape_preserving_cubic_spline_with_slopes, PiecewiseCubicCurve};
+use crate::{NewShapePreservingWithSlopes, PiecewiseCubicCurve};
 
 /// ... monotonically *increasing* ...
 pub struct MonotoneCubicSpline<S> {
@@ -34,7 +34,7 @@ impl<S: Scalar> MonotoneCubicSpline<S> {
         }
         let closed = false;
         Ok(MonotoneCubicSpline {
-            inner: make_shape_preserving_cubic_spline_with_slopes(
+            inner: PiecewiseCubicCurve::new_shape_preserving_with_slopes(
                 values.as_ref(), // NB: Values are copied
                 optional_slopes,
                 grid,
