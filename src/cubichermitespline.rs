@@ -1,8 +1,24 @@
 use num_traits::one;
 
 use crate::PiecewiseCubicCurve;
-use crate::{fail, Error};
 use crate::{Scalar, Vector};
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error("There must be at least two positions")]
+    LessThanTwoPositions,
+    #[error(
+        "Exactly 2 tangents per segment are required \
+            (got {segments} segments and {tangents} tangents)"
+    )]
+    TangentsVsSegments { tangents: usize, segments: usize },
+    #[error("length of grid ({grid}) must be the same as number of positions ({positions})")]
+    GridVsPositions { grid: usize, positions: usize },
+    #[error("index {index}: NaN values are not allowed in grid")]
+    GridNan { index: usize },
+    #[error("index {index}: grid values must be strictly ascending")]
+    GridNotAscending { index: usize },
+}
 
 impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
     pub fn new_hermite(
@@ -10,15 +26,22 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
         tangents: &[V],
         grid: &[S],
     ) -> Result<PiecewiseCubicCurve<S, V>, Error> {
+        use Error::*;
         if positions.len() < 2 {
-            fail!("At least 2 positions are needed");
+            return Err(LessThanTwoPositions);
         }
         let segments_len = positions.len() - 1;
         if tangents.len() != 2 * segments_len {
-            fail!("Exactly 2 tangents per segment are needed");
+            return Err(TangentsVsSegments {
+                tangents: tangents.len(),
+                segments: segments_len,
+            });
         }
         if positions.len() != grid.len() {
-            fail!("As many grid times as positions are needed");
+            return Err(GridVsPositions {
+                grid: grid.len(),
+                positions: positions.len(),
+            });
         }
         let mut segments = Vec::with_capacity(segments_len);
         for i in 0..segments_len {
@@ -45,7 +68,13 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
                 x0 * two - x1 * two + v0 * delta + v1 * delta,
             ]);
         }
-        PiecewiseCubicCurve::new(segments, grid)
+        use crate::piecewisecubiccurve::Error as Other;
+        PiecewiseCubicCurve::new(segments, grid).map_err(|err| match err {
+            Other::ZeroSegments => unreachable!(),
+            Other::GridVsSegments { .. } => unreachable!(),
+            Other::GridNan { index } => GridNan { index },
+            Other::GridNotAscending { index } => GridNotAscending { index },
+        })
     }
 }
 

@@ -2,7 +2,76 @@ use num_traits::zero;
 use superslice::Ext; // for slice::upper_bound_by()
 
 use crate::utilities::bisect;
-use crate::{fail, Error, MonotoneCubicSpline, PiecewiseCubicCurve, Scalar, Vector};
+use crate::{MonotoneCubicSpline, PiecewiseCubicCurve, Scalar, Vector};
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error<S: Scalar> {
+    #[error("there must be at least two positions")]
+    LessThanTwoPositions,
+    #[error("number of times ({times}) must be {} number of positions ({positions})", if *.closed {
+        "one more than"
+    } else {
+        "the same as"
+    })]
+    TimesVsPositions {
+        times: usize,
+        positions: usize,
+        closed: bool,
+    },
+    #[error("number of speeds ({speeds}) and positions ({positions}) must be the same")]
+    SpeedsVsPositions { speeds: usize, positions: usize },
+    #[error("index {index}: speed is only allowed if time is given")]
+    SpeedWithoutTime { index: usize },
+    #[error("last time value must be specified")]
+    LastTimeMissing,
+    // TODO: two indices?
+    #[error("index {index}: duplicate position without time")]
+    DuplicatePositionWithoutTime { index: usize },
+    #[error("number of positions ({positions}) must be {} TCB values ({tcb})", if *.closed {
+        "the same as"
+    } else {
+        "two more than"
+    })]
+    TcbVsPositions {
+        tcb: usize,
+        positions: usize,
+        closed: bool,
+    },
+    #[error("repeated position (at index {index}) is not allowed")]
+    RepeatedPosition { index: usize },
+    #[error("index {index}: time values are not allowed to be NaN")]
+    TimeNan { index: usize },
+    #[error("index {index}: time values must be strictly ascending")]
+    TimesNotAscending { index: usize },
+    #[error("speed at index {index} too fast ({speed:?}; maximum: {maximum:?})")]
+    TooFast { index: usize, speed: S, maximum: S },
+    #[error("negative speed ({speed:?}) at index {index}")]
+    NegativeSpeed { index: usize, speed: S },
+}
+
+impl<S: Scalar> From<crate::centripetalkochanekbartelsspline::Error> for Error<S> {
+    fn from(err: crate::centripetalkochanekbartelsspline::Error) -> Self {
+        use crate::centripetalkochanekbartelsspline::Error as Other;
+        use Error::*;
+        match err {
+            Other::LessThanTwoPositions => LessThanTwoPositions,
+            // TODO: fix index? consider missing times?
+            // TODO: move to map_err() for this?
+            // TODO: can there be non-adjacent indices?
+            Other::RepeatedPosition { index } => RepeatedPosition { index },
+            // TODO: same questions as above
+            Other::TcbVsPositions {
+                tcb,
+                positions,
+                closed,
+            } => TcbVsPositions {
+                tcb,
+                positions,
+                closed,
+            },
+        }
+    }
+}
 
 pub struct AsdfSpline<S, V> {
     path: PiecewiseCubicCurve<S, V>,
@@ -19,15 +88,20 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
         tcb: &[[S; 3]],
         closed: bool,
         get_length: F,
-    ) -> Result<AsdfSpline<S, V>, Error> {
-        if positions.len() < 2 {
-            fail!("At least two positions are required");
-        }
+    ) -> Result<AsdfSpline<S, V>, Error<S>> {
+        use Error::*;
         if positions.len() + closed as usize != times.len() {
-            fail!("Number of time values must be same as positions (one more for closed curves)");
+            return Err(TimesVsPositions {
+                times: times.len(),
+                positions: positions.len(),
+                closed,
+            });
         }
         if speeds.len() != positions.len() {
-            fail!("Same number of speed values as positions are required");
+            return Err(SpeedsVsPositions {
+                speeds: speeds.len(),
+                positions: positions.len(),
+            });
         }
         let path = PiecewiseCubicCurve::new_centripetal_kochanek_bartels(
             positions,
@@ -53,7 +127,7 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
             } else if speed.is_none() {
                 missing_times.push(i);
             } else {
-                fail!("Speed is only allowed if time is given");
+                return Err(SpeedWithoutTime { index: i });
             }
         }
         if let Some(last_time) = *times.last().unwrap() {
@@ -65,7 +139,7 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
                 // The last values have already been pushed in the for-loop above.
             }
         } else {
-            fail!("Last time value must be specified");
+            return Err(LastTimeMissing);
         }
         let mut lengths = Vec::<S>::new();
         let mut lengths_at_missing_times = Vec::<S>::new();
@@ -80,13 +154,40 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
             }
         }
         let mut grid = t2s_times.clone();
-        let t2s = MonotoneCubicSpline::with_slopes(lengths, t2s_speeds, t2s_times)?;
+        use crate::monotonecubicspline::Error as Other;
+        let t2s = MonotoneCubicSpline::with_slopes(lengths, t2s_speeds, t2s_times).map_err(
+            |e| match e {
+                Other::LessThanTwoValues => unreachable!(),
+                Other::SlopesVsValues { .. } => unreachable!(),
+                Other::GridVsValues { .. } => unreachable!(),
+                Other::Decreasing => unreachable!(),
+                // TODO: fix index? consider missing times? optional speeds?
+                Other::GridNan { index } => TimeNan { index },
+                // TODO: fix index?
+                Other::GridNotAscending { index } => TimesNotAscending { index },
+                // TODO: fix index?
+                Other::SlopeTooSteep {
+                    index,
+                    slope,
+                    maximum,
+                } => TooFast {
+                    index,
+                    speed: slope,
+                    maximum,
+                },
+                // TODO: fix index?
+                Other::NegativeSlope { index, slope } => NegativeSpeed {
+                    index,
+                    speed: slope,
+                },
+            },
+        )?;
         assert!(missing_times.len() == lengths_at_missing_times.len());
         for i in 0..missing_times.len() {
             if let Some(time) = t2s.get_time(lengths_at_missing_times[i]) {
                 grid.insert(missing_times[i], time);
             } else {
-                fail!("duplicate position without time");
+                return Err(DuplicatePositionWithoutTime { index: i });
             }
         }
         let t2s = t2s.into_inner();

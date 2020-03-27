@@ -1,12 +1,34 @@
 use num_traits::one;
 use superslice::Ext; // for slice::upper_bound_by()
 
-use crate::utilities::gauss_legendre13;
-use crate::{fail, Error, Scalar, Vector};
+use crate::utilities::{check_grid, gauss_legendre13, GridError};
+use crate::{Scalar, Vector};
 
 pub struct PiecewiseCubicCurve<S, V> {
     segments: Box<[[V; 4]]>,
     grid: Box<[S]>,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error("there must be at least one segment")]
+    ZeroSegments,
+    #[error("length of grid ({grid}) must be one more than number of segments ({segments})")]
+    GridVsSegments { grid: usize, segments: usize },
+    #[error("index {index}: NaN values are not allowed in grid")]
+    GridNan { index: usize },
+    #[error("index {index}: grid values must be strictly ascending")]
+    GridNotAscending { index: usize },
+}
+
+impl From<GridError> for Error {
+    fn from(e: GridError) -> Error {
+        use Error::*;
+        match e {
+            GridError::GridNan { index } => GridNan { index },
+            GridError::GridNotAscending { index } => GridNotAscending { index },
+        }
+    }
 }
 
 impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
@@ -16,18 +38,17 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
     ) -> Result<PiecewiseCubicCurve<S, V>, Error> {
         let segments = segments.into();
         let grid = grid.into();
+        use Error::*;
         if segments.len() < 1 {
-            fail!("There must be at least one segment");
+            return Err(ZeroSegments);
         }
         if segments.len() + 1 != grid.len() {
-            fail!("There must be exactly one more grid value than segments");
+            return Err(GridVsSegments {
+                grid: grid.len(),
+                segments: segments.len(),
+            });
         }
-        if grid.iter().any(|&x| x.is_nan()) {
-            fail!("NaN values are not allowed in grid");
-        }
-        if grid.windows(2).any(|w| w[0] >= w[1]) {
-            fail!("Grid values must be strictly ascending");
-        }
+        check_grid(&grid)?;
         Ok(PiecewiseCubicCurve { segments, grid })
     }
 

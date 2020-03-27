@@ -1,15 +1,52 @@
 use num_traits::{one, zero};
 
+use crate::utilities::{check_grid, GridError};
 use crate::PiecewiseCubicCurve;
 use crate::Scalar;
-use crate::{fail, Error};
+
+// TODO: Two error types? One doesn't need "slopes" errors.
+#[derive(thiserror::Error, Debug)]
+pub enum Error<S: Scalar> {
+    #[error("there must be at least two values")]
+    LessThanTwoValues,
+    #[error("length of grid ({grid}) must be {} number of values ({values})", if *.closed {
+        "one more than"
+    } else {
+        "the same as"
+    })]
+    GridVsValues {
+        grid: usize,
+        values: usize,
+        closed: bool,
+    },
+    #[error("index {index}: NaN values are not allowed in grid")]
+    GridNan { index: usize },
+    #[error("index {index}: grid values must be strictly ascending")]
+    GridNotAscending { index: usize },
+    #[error("number of slopes ({slopes}) must be same as number of values ({values})")]
+    SlopesVsValues { slopes: usize, values: usize },
+    #[error("slope at index {index} too steep ({slope:?}; maximum: {maximum:?})")]
+    SlopeTooSteep { index: usize, slope: S, maximum: S },
+    #[error("slope at index {index} has wrong sign ({slope:?})")]
+    SlopeWrongSign { index: usize, slope: S },
+}
+
+impl<S: Scalar> From<GridError> for Error<S> {
+    fn from(e: GridError) -> Error<S> {
+        use Error::*;
+        match e {
+            GridError::GridNan { index } => GridNan { index },
+            GridError::GridNotAscending { index } => GridNotAscending { index },
+        }
+    }
+}
 
 impl<S: Scalar> PiecewiseCubicCurve<S, S> {
     pub fn new_shape_preserving(
         values: impl Into<Vec<S>>,
         grid: impl Into<Vec<S>>,
         closed: bool,
-    ) -> Result<PiecewiseCubicCurve<S, S>, Error> {
+    ) -> Result<PiecewiseCubicCurve<S, S>, Error<S>> {
         let values = values.into();
         let slopes = vec![None; values.len()];
         PiecewiseCubicCurve::new_shape_preserving_with_slopes(values, slopes, grid, closed)
@@ -22,22 +59,28 @@ impl<S: Scalar> PiecewiseCubicCurve<S, S> {
         optional_slopes: impl AsRef<[Option<S>]>,
         grid: impl Into<Vec<S>>,
         closed: bool,
-    ) -> Result<PiecewiseCubicCurve<S, S>, Error> {
+    ) -> Result<PiecewiseCubicCurve<S, S>, Error<S>> {
+        use Error::*;
         let mut values = values.into();
         let optional_slopes = optional_slopes.as_ref();
         let mut grid = grid.into();
         if values.len() < 2 {
-            fail!("At least two values are required");
-        }
-        if values.len() + closed as usize != grid.len() {
-            fail!("Number of grid values must be same as values (one more for closed curves)");
+            return Err(LessThanTwoValues);
         }
         if values.len() != optional_slopes.len() {
-            fail!("Number of slopes must be same as values");
+            return Err(SlopesVsValues {
+                slopes: optional_slopes.len(),
+                values: values.len(),
+            });
         }
-        if grid.iter().any(|&x| x.is_nan()) {
-            fail!("NaN values are not allowed in grid");
+        if values.len() + closed as usize != grid.len() {
+            return Err(GridVsValues {
+                grid: grid.len(),
+                values: values.len(),
+                closed,
+            });
         }
+        check_grid(&grid)?;
         if closed {
             values.reserve_exact(2);
             grid.reserve_exact(1);
@@ -59,12 +102,7 @@ impl<S: Scalar> PiecewiseCubicCurve<S, S> {
             let left = (x0 - x_1) / (t0 - t_1);
             let right = (x1 - x0) / (t1 - t0);
             let slope = match optional_slopes[(i + 1) % optional_slopes.len()] {
-                Some(slope) => {
-                    if slope != fix_slope(slope, left, right) {
-                        fail!("Slope too steep or wrong sign: {:?}", slope);
-                    }
-                    slope
-                }
+                Some(slope) => verify_slope(slope, left, right, i + 1)?,
                 None => fix_slope(
                     ((x0 - x_1) / (t0 - t_1) + (x1 - x0) / (t1 - t0)) / two,
                     left,
@@ -85,39 +123,71 @@ impl<S: Scalar> PiecewiseCubicCurve<S, S> {
             let chord = (values[1] - values[0]) / (grid[1] - grid[0]);
             let one = optional_slopes[0];
             let two = optional_slopes[1];
-            slopes.push(check_slope(&one, &two, chord)?);
-            slopes.push(check_slope(&two, &one, chord)?);
+            slopes.push(calculate_slope(&one, &two, chord, 0)?);
+            slopes.push(calculate_slope(&two, &one, chord, 1)?);
         } else {
             slopes.insert(
                 0,
-                check_slope(
+                calculate_slope(
                     optional_slopes.first().unwrap(),
                     &slopes.first().copied(),
                     (values[1] - values[0]) / (grid[1] - grid[0]),
+                    0,
                 )?,
             );
-            slopes.push(check_slope(
+            slopes.push(calculate_slope(
                 optional_slopes.last().unwrap(),
                 &slopes.last().copied(),
                 (values[values.len() - 1] - values[values.len() - 2])
                     / (grid[grid.len() - 1] - grid[grid.len() - 2]),
+                slopes.len(),
             )?);
         }
-        PiecewiseCubicCurve::new_hermite(&values, &slopes, &grid)
+        use crate::cubichermitespline::Error as Other;
+        PiecewiseCubicCurve::new_hermite(&values, &slopes, &grid).map_err(|e| match e {
+            Other::LessThanTwoPositions => unreachable!(),
+            Other::TangentsVsSegments { .. } => unreachable!(),
+            Other::GridVsPositions { .. } => unreachable!(),
+            Other::GridNotAscending { index } => GridNotAscending { index },
+            Other::GridNan { index } => GridNan { index },
+        })
     }
 }
 
-fn check_slope<S: Scalar>(main: &Option<S>, other: &Option<S>, chord: S) -> Result<S, Error> {
+fn calculate_slope<S: Scalar>(
+    main: &Option<S>,
+    other: &Option<S>,
+    chord: S,
+    index: usize,
+) -> Result<S, Error<S>> {
     if let Some(main) = main {
-        let main = *main;
-        if main != fix_slope(main, chord, chord) {
-            fail!("Slope too steep or wrong sign: {:?}", main);
-        }
-        Ok(main)
+        Ok(verify_slope(*main, chord, chord, index)?)
     } else if let Some(other) = other {
         Ok(end_slope(*other, chord))
     } else {
         Ok(chord)
+    }
+}
+
+fn verify_slope<S: Scalar>(slope: S, left: S, right: S, index: usize) -> Result<S, Error<S>> {
+    let fixed_slope = fix_slope(slope, left, right);
+    if fixed_slope == slope {
+        Ok(slope)
+    } else if left * right < zero() {
+        assert!(fixed_slope == zero());
+        Err(Error::SlopeTooSteep {
+            index,
+            slope,
+            maximum: zero(),
+        })
+    } else if left * slope < zero() {
+        Err(Error::SlopeWrongSign { index, slope })
+    } else {
+        Err(Error::SlopeTooSteep {
+            index,
+            slope,
+            maximum: fixed_slope,
+        })
     }
 }
 

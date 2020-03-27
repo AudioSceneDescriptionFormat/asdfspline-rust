@@ -1,8 +1,25 @@
 use num_traits::{one, pow, zero};
 
 use crate::PiecewiseCubicCurve;
-use crate::{fail, Error};
 use crate::{Scalar, Vector};
+
+#[derive(thiserror::Error, Debug)]
+pub enum Error {
+    #[error("there must be at least two positions")]
+    LessThanTwoPositions,
+    #[error("number of positions ({positions}) must be {} TCB values ({tcb})", if *.closed {
+        "the same as"
+    } else {
+        "two more than"
+    })]
+    TcbVsPositions {
+        tcb: usize,
+        positions: usize,
+        closed: bool,
+    },
+    #[error("repeated position (at index {index}) is not allowed")]
+    RepeatedPosition { index: usize },
+}
 
 impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
     // TODO: require alga::linear::NormedSpace to get norm() method for vectors?
@@ -12,8 +29,10 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
         closed: bool,
         get_length: F,
     ) -> Result<PiecewiseCubicCurve<S, V>, Error> {
-        if positions.len() < 2 {
-            fail!("At least two positions are required");
+        use Error::*;
+        let positions_len = positions.len();
+        if positions_len < 2 {
+            return Err(LessThanTwoPositions);
         }
         let mut positions = positions;
         // Only used for "closed" splines:
@@ -30,7 +49,11 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
         }
 
         if tcb.len() + 2 != positions.len() {
-            fail!("There must be two more positions than TCB values (except for closed curves)");
+            return Err(TcbVsPositions {
+                tcb: tcb.len(),
+                positions: positions_len,
+                closed,
+            });
         }
 
         // Create grid with centripetal parametrization
@@ -42,7 +65,7 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
             let x1 = positions[i + 1];
             let delta = get_length(x1 - x0).sqrt();
             if delta == zero() {
-                fail!("Repeated positions are not possible");
+                return Err(RepeatedPosition { index: i + 1 });
             }
             grid.push(*grid.last().unwrap() + delta);
         }
@@ -116,7 +139,14 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
                 *tangents.last().unwrap(),
             ));
         }
-        PiecewiseCubicCurve::new_hermite(&positions, &tangents, &grid)
+        use crate::cubichermitespline::Error as Other;
+        PiecewiseCubicCurve::new_hermite(&positions, &tangents, &grid).map_err(|e| match e {
+            Other::LessThanTwoPositions => unreachable!(),
+            Other::TangentsVsSegments { .. } => unreachable!(),
+            Other::GridVsPositions { .. } => unreachable!(),
+            Other::GridNotAscending { .. } => unreachable!(),
+            Other::GridNan { .. } => unreachable!(),
+        })
     }
 }
 

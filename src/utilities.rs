@@ -108,3 +108,19 @@ where
         .fold(zero(), |acc, x| acc + x);
     (b - a) * sum / two
 }
+
+pub enum GridError {
+    GridNan { index: usize },
+    GridNotAscending { index: usize },
+}
+
+pub fn check_grid<S: crate::Scalar>(grid: &[S]) -> Result<(), GridError> {
+    use GridError::*;
+    if let Some(index) = grid.iter().copied().position(S::is_nan) {
+        return Err(GridNan { index });
+    }
+    if let Some(index) = grid.windows(2).position(|w| w[0] >= w[1]) {
+        return Err(GridNotAscending { index: index + 1 });
+    }
+    Ok(())
+}

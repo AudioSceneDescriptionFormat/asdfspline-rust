@@ -30,17 +30,15 @@ use std::ops::{Add, Div, DivAssign, Mul, Sub};
 
 use num_traits::{Float, FromPrimitive, NumAssign};
 
-mod asdfspline;
-mod centripetalkochanekbartelsspline;
-mod cubichermitespline;
-mod error;
-mod monotonecubicspline;
-mod piecewisecubiccurve;
-mod shapepreservingcubicspline;
+pub mod asdfspline;
+pub mod centripetalkochanekbartelsspline;
+pub mod cubichermitespline;
+pub mod monotonecubicspline;
+pub mod piecewisecubiccurve;
+pub mod shapepreservingcubicspline;
 pub mod utilities;
 
 pub use crate::asdfspline::AsdfSpline;
-pub use crate::error::Error;
 pub use crate::monotonecubicspline::MonotoneCubicSpline;
 pub use crate::piecewisecubiccurve::PiecewiseCubicCurve;
 
