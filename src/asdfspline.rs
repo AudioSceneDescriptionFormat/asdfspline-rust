@@ -2,10 +2,7 @@ use num_traits::zero;
 use superslice::Ext; // for slice::upper_bound_by()
 
 use crate::utilities::bisect;
-use crate::{
-    fail, make_centripetal_kochanek_bartels_spline, Error, MonotoneCubicSpline,
-    PiecewiseCubicCurve, Scalar, Vector,
-};
+use crate::{fail, Error, MonotoneCubicSpline, PiecewiseCubicCurve, Scalar, Vector};
 
 pub struct AsdfSpline<S, V> {
     path: PiecewiseCubicCurve<S, V>,
@@ -32,7 +29,12 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
         if speeds.len() != positions.len() {
             fail!("Same number of speed values as positions are required");
         }
-        let path = make_centripetal_kochanek_bartels_spline(positions, tcb, closed, &get_length)?;
+        let path = PiecewiseCubicCurve::new_centripetal_kochanek_bartels(
+            positions,
+            tcb,
+            closed,
+            &get_length,
+        )?;
 
         let mut t2s_times = Vec::new();
         let mut t2s_speeds = Vec::new();

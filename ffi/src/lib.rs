@@ -7,10 +7,7 @@ use std::slice;
 use libc::{c_char, size_t};
 use nalgebra_glm as glm;
 
-use asdfspline::{
-    make_centripetal_kochanek_bartels_spline, make_shape_preserving_cubic_spline,
-    make_shape_preserving_cubic_spline_with_slopes, MonotoneCubicSpline, PiecewiseCubicCurve,
-};
+use asdfspline::{MonotoneCubicSpline, PiecewiseCubicCurve};
 
 thread_local! {
     static LAST_ERROR: RefCell<CString> = RefCell::new(CString::new("no error").unwrap());
@@ -168,9 +165,13 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline3(
                 .map(|coords| Vec3::from_column_slice(coords))
                 .collect();
             let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-            let curve =
-                make_centripetal_kochanek_bartels_spline(&positions, tcb, closed, |v| v.norm())
-                    .unwrap_display();
+            let curve = PiecewiseCubicCurve::new_centripetal_kochanek_bartels(
+                &positions,
+                tcb,
+                closed,
+                |v| v.norm(),
+            )
+            .unwrap_display();
             Box::into_raw(Box::new(curve))
         },
         std::ptr::null_mut(),
@@ -193,9 +194,13 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline2(
                 .map(|coords| Vec2::from_column_slice(coords))
                 .collect();
             let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-            let curve =
-                make_centripetal_kochanek_bartels_spline(&positions, tcb, closed, |v| v.norm())
-                    .unwrap_display();
+            let curve = PiecewiseCubicCurve::new_centripetal_kochanek_bartels(
+                &positions,
+                tcb,
+                closed,
+                |v| v.norm(),
+            )
+            .unwrap_display();
             Box::into_raw(Box::new(curve))
         },
         std::ptr::null_mut(),
@@ -214,7 +219,8 @@ pub unsafe extern "C" fn asdf_shapepreservingcubicspline(
         || {
             let values = slice::from_raw_parts(values, values_count);
             let grid = slice::from_raw_parts(grid, grid_count);
-            let curve = make_shape_preserving_cubic_spline(values, grid, closed).unwrap_display();
+            let curve =
+                PiecewiseCubicCurve::new_shape_preserving(values, grid, closed).unwrap_display();
             Box::into_raw(Box::new(curve))
         },
         std::ptr::null_mut(),
@@ -241,7 +247,7 @@ pub unsafe extern "C" fn asdf_shapepreservingcubicspline_with_slopes(
                 .collect();
             let grid = slice::from_raw_parts(grid, grid_count);
             let curve =
-                make_shape_preserving_cubic_spline_with_slopes(values, slopes, grid, closed)
+                PiecewiseCubicCurve::new_shape_preserving_with_slopes(values, slopes, grid, closed)
                     .unwrap_display();
             Box::into_raw(Box::new(curve))
         },
