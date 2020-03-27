@@ -30,7 +30,7 @@ pub extern "C" fn asdf_last_error() -> *const c_char {
     LAST_ERROR.with(|cell| cell.borrow().as_ptr())
 }
 
-fn handle_errors<F, T>(f: F, optb: T) -> T
+fn handle_errors<F, T>(f: F, fallback: T) -> T
 where
     F: FnOnce() -> T + UnwindSafe,
 {
@@ -44,7 +44,7 @@ where
             } else {
                 set_error("unknown error");
             }
-            optb
+            fallback
         }
     }
 }
@@ -64,12 +64,23 @@ impl<T, E: Display> ResultExt<T, E> for Result<T, E> {
 
 pub type Vec2 = glm::TVec2<f32>;
 pub type Vec3 = glm::TVec3<f32>;
+/// A (three-dimensional) ASDF spline.
 pub type AsdfSpline = asdfspline::AsdfSpline<f32, Vec3>;
 pub type AsdfCubicCurve3 = PiecewiseCubicCurve<f32, Vec3>;
 pub type AsdfCubicCurve2 = PiecewiseCubicCurve<f32, Vec2>;
 pub type AsdfCubicCurve1 = PiecewiseCubicCurve<f32, f32>;
 pub type AsdfMonotoneCubic = MonotoneCubicSpline<f32>;
 
+/// Creates an `AsdfSpline`.
+///
+/// Each element in `positions` (3D coordinates) and `tcb`
+/// (tension, continuity, bias) contains *three* `float` values,
+/// `times` and `speeds` contain one `float` per element.
+///
+/// # Safety
+///
+/// All input pointers must be valid for the corresponding `*_count` numbers
+/// of elements (not bytes).
 #[no_mangle]
 pub unsafe extern "C" fn asdf_asdfspline(
     positions: *const f32,
@@ -106,6 +117,12 @@ pub unsafe extern "C" fn asdf_asdfspline(
     )
 }
 
+/// Frees an `AsdfSpline`
+///
+/// # Safety
+///
+/// The pointer must have been obtained with `asdf_asdfspline()`.
+/// Each pointer can only be freed once.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_asdfspline_free(ptr: *mut AsdfSpline) {
     if !ptr.is_null() {
@@ -113,6 +130,13 @@ pub unsafe extern "C" fn asdf_asdfspline_free(ptr: *mut AsdfSpline) {
     }
 }
 
+/// Returns curve value(s) at given time(s).
+///
+/// # Safety
+///
+/// All pointers must be valid.
+/// `times` contains one `float` per element,
+/// `output` must provide space for *three* `float`s per element.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_asdfspline_evaluate(
     ptr: *mut AsdfSpline,
@@ -135,6 +159,11 @@ pub unsafe extern "C" fn asdf_asdfspline_evaluate(
     )
 }
 
+/// Provides a pointer to (and number of) grid elements.
+///
+/// # Safety
+///
+/// All pointers must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_asdfspline_grid(
     ptr: *mut AsdfSpline,
@@ -152,6 +181,15 @@ pub unsafe extern "C" fn asdf_asdfspline_grid(
     )
 }
 
+/// Creates a three-dimensional KB-spline.
+///
+/// Each element in `positions` (3D coordinates) and `tcb`
+/// (tension, continuity, bias) contains *three* `float` values,
+///
+/// # Safety
+///
+/// All input pointers must be valid for the corresponding `*_count` numbers
+/// of elements (not bytes).
 #[no_mangle]
 pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline3(
     positions: *const f32,
@@ -177,6 +215,15 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline3(
     )
 }
 
+/// Creates a two-dimensional KB-spline.
+///
+/// Each element in `positions` (2D coordinates) contains *two* `float` values,
+/// each element in `tcb` (tension, continuity, bias) contains *three* `float` values,
+///
+/// # Safety
+///
+/// All input pointers must be valid for the corresponding `*_count` numbers
+/// of elements (not bytes).
 #[no_mangle]
 pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline2(
     positions: *const f32,
@@ -202,6 +249,12 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline2(
     )
 }
 
+/// Creates a one-dimensional shape-preserving cubic spline.
+///
+/// # Safety
+///
+/// All input pointers must be valid for the corresponding `*_count` numbers
+/// of elements (not bytes).
 #[no_mangle]
 pub unsafe extern "C" fn asdf_shapepreservingcubicspline(
     values: *const f32,
@@ -221,6 +274,12 @@ pub unsafe extern "C" fn asdf_shapepreservingcubicspline(
     )
 }
 
+/// Creates a one-dimensional shape-preserving cubic spline (given values and slopes).
+///
+/// # Safety
+///
+/// All input pointers must be valid for the corresponding `*_count` numbers
+/// of elements (not bytes).
 #[no_mangle]
 pub unsafe extern "C" fn asdf_shapepreservingcubicspline_with_slopes(
     values: *const f32,
@@ -249,6 +308,12 @@ pub unsafe extern "C" fn asdf_shapepreservingcubicspline_with_slopes(
     )
 }
 
+/// Creates a one-dimensional monotone cubic spline.
+///
+/// # Safety
+///
+/// All input pointers must be valid for the corresponding `*_count` numbers
+/// of elements (not bytes).
 #[no_mangle]
 pub unsafe extern "C" fn asdf_monotonecubic(
     values: *const f32,
@@ -267,6 +332,12 @@ pub unsafe extern "C" fn asdf_monotonecubic(
     )
 }
 
+/// Creates a one-dimensional monotone cubic spline (given values and slopes).
+///
+/// # Safety
+///
+/// All input pointers must be valid for the corresponding `*_count` numbers
+/// of elements (not bytes).
 #[no_mangle]
 pub unsafe extern "C" fn asdf_monotonecubic_with_slopes(
     values: *const f32,
@@ -292,6 +363,12 @@ pub unsafe extern "C" fn asdf_monotonecubic_with_slopes(
     )
 }
 
+/// Frees an `AsdfMonotoneCubic`
+///
+/// # Safety
+///
+/// The pointer must have been obtained with `asdf_monotonecubic()`.
+/// Each pointer can only be freed once.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_monotonecubic_free(ptr: *mut AsdfMonotoneCubic) {
     if !ptr.is_null() {
@@ -299,6 +376,11 @@ pub unsafe extern "C" fn asdf_monotonecubic_free(ptr: *mut AsdfMonotoneCubic) {
     }
 }
 
+/// Returns a pointer to `AsdfCubicCurve1` from `AsdfMonotoneCubic`.
+///
+/// # Safety
+///
+/// The pointer must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_monotonecubic_inner(
     ptr: *mut AsdfMonotoneCubic,
@@ -313,6 +395,13 @@ pub unsafe extern "C" fn asdf_monotonecubic_inner(
     )
 }
 
+/// Returns the time instance(s) for the given value(s).
+///
+/// # Safety
+///
+/// All pointers must be valid.
+/// `values` contains one `float` per element,
+/// `output` must provide space for one `float` per element.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_monotonecubic_get_time(
     ptr: *mut AsdfMonotoneCubic,
@@ -334,6 +423,12 @@ pub unsafe extern "C" fn asdf_monotonecubic_get_time(
 
 // TODO: avoid duplication for 1, 2 and 3 dimensions ...
 
+/// Frees an `AsdfCubicCurve3`
+///
+/// # Safety
+///
+/// The pointer must have been obtained with `asdf_centripetalkochanekbartelsspline3()`.
+/// Each pointer can only be freed once.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_cubiccurve3_free(ptr: *mut AsdfCubicCurve3) {
     if !ptr.is_null() {
@@ -341,6 +436,13 @@ pub unsafe extern "C" fn asdf_cubiccurve3_free(ptr: *mut AsdfCubicCurve3) {
     }
 }
 
+/// Returns curve value(s) at given time(s).
+///
+/// # Safety
+///
+/// All pointers must be valid.
+/// `times` contains one `float` per element,
+/// `output` must provide space for *three* `float`s per element.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_cubiccurve3_evaluate(
     ptr: *mut AsdfCubicCurve3,
@@ -363,6 +465,11 @@ pub unsafe extern "C" fn asdf_cubiccurve3_evaluate(
     )
 }
 
+/// Provides a pointer to (and number of) grid elements.
+///
+/// # Safety
+///
+/// All pointers must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_cubiccurve3_grid(
     ptr: *mut AsdfCubicCurve3,
@@ -380,6 +487,12 @@ pub unsafe extern "C" fn asdf_cubiccurve3_grid(
     )
 }
 
+/// Frees an `AsdfCubicCurve2`
+///
+/// # Safety
+///
+/// The pointer must have been obtained with `asdf_centripetalkochanekbartelsspline2()`.
+/// Each pointer can only be freed once.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_cubiccurve2_free(ptr: *mut AsdfCubicCurve2) {
     if !ptr.is_null() {
@@ -387,6 +500,13 @@ pub unsafe extern "C" fn asdf_cubiccurve2_free(ptr: *mut AsdfCubicCurve2) {
     }
 }
 
+/// Returns curve value(s) at given time(s).
+///
+/// # Safety
+///
+/// All pointers must be valid.
+/// `times` contains one `float` per element,
+/// `output` must provide space for *two* `float`s per element.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_cubiccurve2_evaluate(
     ptr: *mut AsdfCubicCurve2,
@@ -408,6 +528,11 @@ pub unsafe extern "C" fn asdf_cubiccurve2_evaluate(
     )
 }
 
+/// Provides a pointer to (and number of) grid elements.
+///
+/// # Safety
+///
+/// All pointers must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_cubiccurve2_grid(
     ptr: *mut AsdfCubicCurve2,
@@ -425,6 +550,13 @@ pub unsafe extern "C" fn asdf_cubiccurve2_grid(
     )
 }
 
+/// Frees an `AsdfCubicCurve1`
+///
+/// # Safety
+///
+/// The pointer must have been obtained with `asdf_shapepreservingcubicspline()` or
+/// `asdf_shapepreservingcubicspline_with_slopes()`.
+/// Each pointer can only be freed once.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_cubiccurve1_free(ptr: *mut AsdfCubicCurve1) {
     if !ptr.is_null() {
@@ -432,6 +564,13 @@ pub unsafe extern "C" fn asdf_cubiccurve1_free(ptr: *mut AsdfCubicCurve1) {
     }
 }
 
+/// Returns curve value(s) at given time(s).
+///
+/// # Safety
+///
+/// All pointers must be valid.
+/// `times` contains one `float` per element,
+/// `output` must provide space for *one* `float` per element.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_cubiccurve1_evaluate(
     ptr: *mut AsdfCubicCurve1,
@@ -451,6 +590,11 @@ pub unsafe extern "C" fn asdf_cubiccurve1_evaluate(
     )
 }
 
+/// Provides a pointer to (and number of) grid elements.
+///
+/// # Safety
+///
+/// All pointers must be valid.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_cubiccurve1_grid(
     ptr: *mut AsdfCubicCurve1,
