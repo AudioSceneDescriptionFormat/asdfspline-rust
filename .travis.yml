@@ -16,11 +16,11 @@ before_script:
   - python3 -m pip install pip --upgrade --user
   - python3 -m pip install setuptools --user
   - python3 -m pip install nbconvert ipykernel matplotlib --user
+  - cargo build --verbose --all
+  - cargo doc --verbose --all
 
 script:
-  - cargo build --verbose --all
   - cargo test --verbose --all
-  - cargo doc --verbose --all
   - cargo fmt --all -- --check
   - cargo clippy --all-targets --all-features -- -D warnings
   - cargo readme -o README.md
