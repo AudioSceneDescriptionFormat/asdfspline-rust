@@ -16,6 +16,7 @@ before_script:
   - python3 -m pip install pip --upgrade --user
   - python3 -m pip install setuptools --user
   - python3 -m pip install nbconvert ipykernel matplotlib --user
+  - python3 -m pip install pytest --user
   - cargo build --verbose --all
   - cargo doc --verbose --all
 
@@ -27,6 +28,7 @@ script:
   - test -z "$(git diff README.md)"
   - cd python
   - python3 -m pip install -e . --user
+  - python3 -m pytest
   - python3 -m nbconvert --execute examples/*.ipynb
 
 notifications:
