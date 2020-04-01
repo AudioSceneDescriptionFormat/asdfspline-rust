@@ -11,6 +11,14 @@ Description Format (ASDF), see
 The required Rust packages (a.k.a. "crates") are listed in the file
 `Cargo.toml`.
 
+## Tests
+
+```
+cargo test --all
+```
+
+There are further tests (using Python) in the `python/` directory.
+
 ## API Documentation
 
 Run `cargo doc --all` in the main directory to create the documentation.

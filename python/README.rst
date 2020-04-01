@@ -9,3 +9,7 @@ CFFI (https://cffi.readthedocs.io/)
 Installation::
 
     python3 -m pip install -e . --user
+
+Run tests (using `pytest <https://docs.pytest.org/>`__))::
+
+    python3 -m pytest
