@@ -1,7 +1,6 @@
 use std::cell::RefCell;
 use std::ffi::CString;
 use std::fmt::Display;
-use std::panic::{catch_unwind, UnwindSafe};
 use std::slice;
 
 use libc::{c_char, size_t};
@@ -27,34 +26,18 @@ pub extern "C" fn asdf_last_error() -> *const c_char {
     LAST_ERROR.with(|cell| cell.borrow().as_ptr())
 }
 
-fn handle_errors<F, T>(f: F, fallback: T) -> T
-where
-    F: FnOnce() -> T + UnwindSafe,
-{
-    match catch_unwind(f) {
-        Ok(value) => value,
-        Err(e) => {
-            if let Some(e) = e.downcast_ref::<&str>() {
-                set_error(*e);
-            } else if let Some(e) = e.downcast_ref::<String>() {
-                set_error(e);
-            } else {
-                set_error("unknown error");
-            }
-            fallback
-        }
-    }
-}
-
 trait ResultExt<T, E: Display> {
-    fn unwrap_display(self) -> T;
+    fn into_raw(self) -> *mut T;
 }
 
 impl<T, E: Display> ResultExt<T, E> for Result<T, E> {
-    fn unwrap_display(self) -> T {
+    fn into_raw(self) -> *mut T {
         match self {
-            Ok(value) => value,
-            Err(e) => panic!(e.to_string()),
+            Ok(value) => Box::into_raw(Box::new(value)),
+            Err(e) => {
+                set_error(e);
+                std::ptr::null_mut()
+            }
         }
     }
 }
@@ -90,28 +73,20 @@ pub unsafe extern "C" fn asdf_asdfspline(
     tcb_count: size_t,
     closed: bool,
 ) -> *mut AsdfSpline {
-    handle_errors(
-        || {
-            let positions: Vec<_> =
-                slice::from_raw_parts(positions as *const [f32; 3], positions_count)
-                    .iter()
-                    .map(|coords| Vec3::from_column_slice(coords))
-                    .collect();
-            let times: Vec<_> = slice::from_raw_parts(times, times_count)
-                .iter()
-                .map(|&t| if t.is_nan() { None } else { Some(t) })
-                .collect();
-            let speeds: Vec<_> = slice::from_raw_parts(speeds, speeds_count)
-                .iter()
-                .map(|&t| if t.is_nan() { None } else { Some(t) })
-                .collect();
-            let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-            let curve = AsdfSpline::new(&positions, &times, &speeds, tcb, closed, |v| v.norm())
-                .unwrap_display();
-            Box::into_raw(Box::new(curve))
-        },
-        std::ptr::null_mut(),
-    )
+    let positions: Vec<_> = slice::from_raw_parts(positions as *const [f32; 3], positions_count)
+        .iter()
+        .map(|coords| Vec3::from_column_slice(coords))
+        .collect();
+    let times: Vec<_> = slice::from_raw_parts(times, times_count)
+        .iter()
+        .map(|&t| if t.is_nan() { None } else { Some(t) })
+        .collect();
+    let speeds: Vec<_> = slice::from_raw_parts(speeds, speeds_count)
+        .iter()
+        .map(|&t| if t.is_nan() { None } else { Some(t) })
+        .collect();
+    let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
+    AsdfSpline::new(&positions, &times, &speeds, tcb, closed, |v| v.norm()).into_raw()
 }
 
 /// Frees an `AsdfSpline`
@@ -141,19 +116,14 @@ pub unsafe extern "C" fn asdf_asdfspline_evaluate(
     count: size_t,
     output: *mut f32,
 ) {
-    handle_errors(
-        || {
-            assert!(!ptr.is_null());
-            let curve = &mut *ptr;
-            for i in 0..count {
-                let v = curve.evaluate(*times.add(i), |v| v.norm());
-                *output.add(3 * i) = *v.as_ptr();
-                *output.add(3 * i + 1) = *v.as_ptr().add(1);
-                *output.add(3 * i + 2) = *v.as_ptr().add(2);
-            }
-        },
-        (),
-    )
+    assert!(!ptr.is_null());
+    let curve = &mut *ptr;
+    for i in 0..count {
+        let v = curve.evaluate(*times.add(i), |v| v.norm());
+        *output.add(3 * i) = *v.as_ptr();
+        *output.add(3 * i + 1) = *v.as_ptr().add(1);
+        *output.add(3 * i + 2) = *v.as_ptr().add(2);
+    }
 }
 
 /// Provides a pointer to (and number of) grid elements.
@@ -166,16 +136,11 @@ pub unsafe extern "C" fn asdf_asdfspline_grid(
     ptr: *mut AsdfSpline,
     output: *mut *const f32,
 ) -> size_t {
-    handle_errors(
-        || {
-            assert!(!ptr.is_null());
-            let curve = &mut *ptr;
-            let grid = curve.grid();
-            *output = grid.as_ptr();
-            grid.len()
-        },
-        0,
-    )
+    assert!(!ptr.is_null());
+    let curve = &mut *ptr;
+    let grid = curve.grid();
+    *output = grid.as_ptr();
+    grid.len()
 }
 
 /// Creates a three-dimensional KB-spline.
@@ -195,25 +160,14 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline3(
     tcb_count: size_t,
     closed: bool,
 ) -> *mut AsdfCubicCurve3 {
-    handle_errors(
-        || {
-            let positions = slice::from_raw_parts(positions as *const [f32; 3], positions_count);
-            let positions: Vec<_> = positions
-                .iter()
-                .map(|coords| Vec3::from_column_slice(coords))
-                .collect();
-            let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-            let curve = PiecewiseCubicCurve::new_centripetal_kochanek_bartels(
-                &positions,
-                tcb,
-                closed,
-                |v| v.norm(),
-            )
-            .unwrap_display();
-            Box::into_raw(Box::new(curve))
-        },
-        std::ptr::null_mut(),
-    )
+    let positions = slice::from_raw_parts(positions as *const [f32; 3], positions_count);
+    let positions: Vec<_> = positions
+        .iter()
+        .map(|coords| Vec3::from_column_slice(coords))
+        .collect();
+    let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
+    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed, |v| v.norm())
+        .into_raw()
 }
 
 /// Creates a two-dimensional KB-spline.
@@ -233,25 +187,14 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline2(
     tcb_count: size_t,
     closed: bool,
 ) -> *mut AsdfCubicCurve2 {
-    handle_errors(
-        || {
-            let positions = slice::from_raw_parts(positions as *const [f32; 2], positions_count);
-            let positions: Vec<_> = positions
-                .iter()
-                .map(|coords| Vec2::from_column_slice(coords))
-                .collect();
-            let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-            let curve = PiecewiseCubicCurve::new_centripetal_kochanek_bartels(
-                &positions,
-                tcb,
-                closed,
-                |v| v.norm(),
-            )
-            .unwrap_display();
-            Box::into_raw(Box::new(curve))
-        },
-        std::ptr::null_mut(),
-    )
+    let positions = slice::from_raw_parts(positions as *const [f32; 2], positions_count);
+    let positions: Vec<_> = positions
+        .iter()
+        .map(|coords| Vec2::from_column_slice(coords))
+        .collect();
+    let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
+    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed, |v| v.norm())
+        .into_raw()
 }
 
 /// Creates a one-dimensional shape-preserving cubic spline.
@@ -268,16 +211,9 @@ pub unsafe extern "C" fn asdf_shapepreservingcubicspline(
     grid_count: size_t,
     closed: bool,
 ) -> *mut AsdfCubicCurve1 {
-    handle_errors(
-        || {
-            let values = slice::from_raw_parts(values, values_count);
-            let grid = slice::from_raw_parts(grid, grid_count);
-            let curve =
-                PiecewiseCubicCurve::new_shape_preserving(values, grid, closed).unwrap_display();
-            Box::into_raw(Box::new(curve))
-        },
-        std::ptr::null_mut(),
-    )
+    let values = slice::from_raw_parts(values, values_count);
+    let grid = slice::from_raw_parts(grid, grid_count);
+    PiecewiseCubicCurve::new_shape_preserving(values, grid, closed).into_raw()
 }
 
 /// Creates a one-dimensional shape-preserving cubic spline (given values and slopes).
@@ -296,22 +232,14 @@ pub unsafe extern "C" fn asdf_shapepreservingcubicspline_with_slopes(
     grid_count: size_t,
     closed: bool,
 ) -> *mut AsdfCubicCurve1 {
-    handle_errors(
-        || {
-            let values = slice::from_raw_parts(values, values_count);
-            let slopes = slice::from_raw_parts(slopes, slopes_count);
-            let slopes: Vec<_> = slopes
-                .iter()
-                .map(|&x| if x.is_nan() { None } else { Some(x) })
-                .collect();
-            let grid = slice::from_raw_parts(grid, grid_count);
-            let curve =
-                PiecewiseCubicCurve::new_shape_preserving_with_slopes(values, slopes, grid, closed)
-                    .unwrap_display();
-            Box::into_raw(Box::new(curve))
-        },
-        std::ptr::null_mut(),
-    )
+    let values = slice::from_raw_parts(values, values_count);
+    let slopes = slice::from_raw_parts(slopes, slopes_count);
+    let slopes: Vec<_> = slopes
+        .iter()
+        .map(|&x| if x.is_nan() { None } else { Some(x) })
+        .collect();
+    let grid = slice::from_raw_parts(grid, grid_count);
+    PiecewiseCubicCurve::new_shape_preserving_with_slopes(values, slopes, grid, closed).into_raw()
 }
 
 /// Creates a one-dimensional monotone cubic spline.
@@ -327,15 +255,9 @@ pub unsafe extern "C" fn asdf_monotonecubic(
     grid: *const f32,
     grid_count: size_t,
 ) -> *mut AsdfMonotoneCubic {
-    handle_errors(
-        || {
-            let values = slice::from_raw_parts(values, values_count);
-            let grid = slice::from_raw_parts(grid, grid_count);
-            let curve = MonotoneCubicSpline::new(values, grid).unwrap_display();
-            Box::into_raw(Box::new(curve))
-        },
-        std::ptr::null_mut(),
-    )
+    let values = slice::from_raw_parts(values, values_count);
+    let grid = slice::from_raw_parts(grid, grid_count);
+    MonotoneCubicSpline::new(values, grid).into_raw()
 }
 
 /// Creates a one-dimensional monotone cubic spline (given values and slopes).
@@ -353,20 +275,14 @@ pub unsafe extern "C" fn asdf_monotonecubic_with_slopes(
     grid: *const f32,
     grid_count: size_t,
 ) -> *mut AsdfMonotoneCubic {
-    handle_errors(
-        || {
-            let values = slice::from_raw_parts(values, values_count);
-            let slopes = slice::from_raw_parts(slopes, slopes_count);
-            let slopes: Vec<_> = slopes
-                .iter()
-                .map(|&x| if x.is_nan() { None } else { Some(x) })
-                .collect();
-            let grid = slice::from_raw_parts(grid, grid_count);
-            let curve = MonotoneCubicSpline::with_slopes(values, slopes, grid).unwrap_display();
-            Box::into_raw(Box::new(curve))
-        },
-        std::ptr::null_mut(),
-    )
+    let values = slice::from_raw_parts(values, values_count);
+    let slopes = slice::from_raw_parts(slopes, slopes_count);
+    let slopes: Vec<_> = slopes
+        .iter()
+        .map(|&x| if x.is_nan() { None } else { Some(x) })
+        .collect();
+    let grid = slice::from_raw_parts(grid, grid_count);
+    MonotoneCubicSpline::with_slopes(values, slopes, grid).into_raw()
 }
 
 /// Frees an `AsdfMonotoneCubic`
@@ -391,14 +307,9 @@ pub unsafe extern "C" fn asdf_monotonecubic_free(ptr: *mut AsdfMonotoneCubic) {
 pub unsafe extern "C" fn asdf_monotonecubic_inner(
     ptr: *mut AsdfMonotoneCubic,
 ) -> *const AsdfCubicCurve1 {
-    handle_errors(
-        || {
-            assert!(!ptr.is_null());
-            let curve = &mut *ptr;
-            curve.inner_ref()
-        },
-        std::ptr::null(),
-    )
+    assert!(!ptr.is_null());
+    let curve = &mut *ptr;
+    curve.inner_ref()
 }
 
 /// Returns the time instance(s) for the given value(s).
@@ -415,16 +326,11 @@ pub unsafe extern "C" fn asdf_monotonecubic_get_time(
     count: size_t,
     output: *mut f32,
 ) {
-    handle_errors(
-        || {
-            assert!(!ptr.is_null());
-            let curve = &mut *ptr;
-            for i in 0..count {
-                *output.add(i) = curve.get_time(*values.add(i)).unwrap_or(std::f32::NAN);
-            }
-        },
-        (),
-    )
+    assert!(!ptr.is_null());
+    let curve = &mut *ptr;
+    for i in 0..count {
+        *output.add(i) = curve.get_time(*values.add(i)).unwrap_or(std::f32::NAN);
+    }
 }
 
 // TODO: avoid duplication for 1, 2 and 3 dimensions ...
@@ -456,19 +362,14 @@ pub unsafe extern "C" fn asdf_cubiccurve3_evaluate(
     count: size_t,
     output: *mut f32,
 ) {
-    handle_errors(
-        || {
-            assert!(!ptr.is_null());
-            let curve = &mut *ptr;
-            for i in 0..count {
-                let v = curve.evaluate(*times.add(i));
-                *output.add(3 * i) = *v.as_ptr();
-                *output.add(3 * i + 1) = *v.as_ptr().add(1);
-                *output.add(3 * i + 2) = *v.as_ptr().add(2);
-            }
-        },
-        (),
-    )
+    assert!(!ptr.is_null());
+    let curve = &mut *ptr;
+    for i in 0..count {
+        let v = curve.evaluate(*times.add(i));
+        *output.add(3 * i) = *v.as_ptr();
+        *output.add(3 * i + 1) = *v.as_ptr().add(1);
+        *output.add(3 * i + 2) = *v.as_ptr().add(2);
+    }
 }
 
 /// Provides a pointer to (and number of) grid elements.
@@ -481,16 +382,11 @@ pub unsafe extern "C" fn asdf_cubiccurve3_grid(
     ptr: *mut AsdfCubicCurve3,
     output: *mut *const f32,
 ) -> size_t {
-    handle_errors(
-        || {
-            assert!(!ptr.is_null());
-            let curve = &mut *ptr;
-            let grid = curve.grid();
-            *output = grid.as_ptr();
-            grid.len()
-        },
-        0,
-    )
+    assert!(!ptr.is_null());
+    let curve = &mut *ptr;
+    let grid = curve.grid();
+    *output = grid.as_ptr();
+    grid.len()
 }
 
 /// Frees an `AsdfCubicCurve2`
@@ -520,18 +416,13 @@ pub unsafe extern "C" fn asdf_cubiccurve2_evaluate(
     count: size_t,
     output: *mut f32,
 ) {
-    handle_errors(
-        || {
-            assert!(!ptr.is_null());
-            let curve = &mut *ptr;
-            for i in 0..count {
-                let v = curve.evaluate(*times.add(i));
-                *output.add(2 * i) = *v.as_ptr();
-                *output.add(2 * i + 1) = *v.as_ptr().add(1);
-            }
-        },
-        (),
-    )
+    assert!(!ptr.is_null());
+    let curve = &mut *ptr;
+    for i in 0..count {
+        let v = curve.evaluate(*times.add(i));
+        *output.add(2 * i) = *v.as_ptr();
+        *output.add(2 * i + 1) = *v.as_ptr().add(1);
+    }
 }
 
 /// Provides a pointer to (and number of) grid elements.
@@ -544,16 +435,11 @@ pub unsafe extern "C" fn asdf_cubiccurve2_grid(
     ptr: *mut AsdfCubicCurve2,
     output: *mut *const f32,
 ) -> size_t {
-    handle_errors(
-        || {
-            assert!(!ptr.is_null());
-            let curve = &mut *ptr;
-            let grid = curve.grid();
-            *output = grid.as_ptr();
-            grid.len()
-        },
-        0,
-    )
+    assert!(!ptr.is_null());
+    let curve = &mut *ptr;
+    let grid = curve.grid();
+    *output = grid.as_ptr();
+    grid.len()
 }
 
 /// Frees an `AsdfCubicCurve1`
@@ -584,16 +470,11 @@ pub unsafe extern "C" fn asdf_cubiccurve1_evaluate(
     count: size_t,
     output: *mut f32,
 ) {
-    handle_errors(
-        || {
-            assert!(!ptr.is_null());
-            let curve = &mut *ptr;
-            for i in 0..count {
-                *output.add(i) = curve.evaluate(*times.add(i));
-            }
-        },
-        (),
-    )
+    assert!(!ptr.is_null());
+    let curve = &mut *ptr;
+    for i in 0..count {
+        *output.add(i) = curve.evaluate(*times.add(i));
+    }
 }
 
 /// Provides a pointer to (and number of) grid elements.
@@ -606,14 +487,9 @@ pub unsafe extern "C" fn asdf_cubiccurve1_grid(
     ptr: *mut AsdfCubicCurve1,
     output: *mut *const f32,
 ) -> size_t {
-    handle_errors(
-        || {
-            assert!(!ptr.is_null());
-            let curve = &mut *ptr;
-            let grid = curve.grid();
-            *output = grid.as_ptr();
-            grid.len()
-        },
-        0,
-    )
+    assert!(!ptr.is_null());
+    let curve = &mut *ptr;
+    let grid = curve.grid();
+    *output = grid.as_ptr();
+    grid.len()
 }
