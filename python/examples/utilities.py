@@ -34,7 +34,9 @@ def plot_3d(s, dots_per_second=10, ax=None):
     if ax is None:
         ax = plt.gca(projection='3d')
     ax.plot(*s.evaluate(times).T, '.')
-    ax.scatter(*s.evaluate(s.grid).T, marker='x', c='black')
+    # https://github.com/matplotlib/matplotlib/issues/18020
+    #ax.scatter(*s.evaluate(s.grid).T, marker='x', c='black')
+    ax.scatter(*s.evaluate(s.grid).T, c='black')
     set_3d_axes_equal(ax)
 
 
