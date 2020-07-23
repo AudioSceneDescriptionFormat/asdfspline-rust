@@ -46,7 +46,7 @@ pub mod piecewisecubiccurve;
 pub mod shapepreservingcubicspline;
 pub mod utilities;
 
-pub use crate::asdfspline::AsdfSpline;
+pub use crate::asdfspline::AsdfPosSpline;
 pub use crate::monotonecubicspline::MonotoneCubicSpline;
 pub use crate::piecewisecubiccurve::PiecewiseCubicCurve;
 

@@ -45,13 +45,13 @@ impl<T, E: Display> ResultExt<T, E> for Result<T, E> {
 pub type Vec2 = glm::TVec2<f32>;
 pub type Vec3 = glm::TVec3<f32>;
 /// A (three-dimensional) ASDF spline.
-pub type AsdfSpline = asdfspline::AsdfSpline<f32, Vec3>;
+pub type AsdfPosSpline = asdfspline::AsdfPosSpline<f32, Vec3>;
 pub type AsdfCubicCurve3 = PiecewiseCubicCurve<f32, Vec3>;
 pub type AsdfCubicCurve2 = PiecewiseCubicCurve<f32, Vec2>;
 pub type AsdfCubicCurve1 = PiecewiseCubicCurve<f32, f32>;
 pub type AsdfMonotoneCubic = MonotoneCubicSpline<f32>;
 
-/// Creates an `AsdfSpline`.
+/// Creates an `AsdfPosSpline`.
 ///
 /// Each element in `positions` (3D coordinates) and `tcb`
 /// (tension, continuity, bias) contains *three* `float` values,
@@ -62,7 +62,7 @@ pub type AsdfMonotoneCubic = MonotoneCubicSpline<f32>;
 /// All input pointers must be valid for the corresponding `*_count` numbers
 /// of elements (not bytes).
 #[no_mangle]
-pub unsafe extern "C" fn asdf_asdfspline(
+pub unsafe extern "C" fn asdf_asdfposspline(
     positions: *const f32,
     positions_count: size_t,
     times: *const f32,
@@ -72,7 +72,7 @@ pub unsafe extern "C" fn asdf_asdfspline(
     tcb: *const f32,
     tcb_count: size_t,
     closed: bool,
-) -> *mut AsdfSpline {
+) -> *mut AsdfPosSpline {
     let positions: Vec<_> = slice::from_raw_parts(positions as *const [f32; 3], positions_count)
         .iter()
         .map(|coords| Vec3::from_column_slice(coords))
@@ -86,17 +86,17 @@ pub unsafe extern "C" fn asdf_asdfspline(
         .map(|&t| if t.is_nan() { None } else { Some(t) })
         .collect();
     let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-    AsdfSpline::new(&positions, &times, &speeds, tcb, closed, |v| v.norm()).into_raw()
+    AsdfPosSpline::new(&positions, &times, &speeds, tcb, closed, |v| v.norm()).into_raw()
 }
 
-/// Frees an `AsdfSpline`
+/// Frees an `AsdfPosSpline`
 ///
 /// # Safety
 ///
-/// The pointer must have been obtained with `asdf_asdfspline()`.
+/// The pointer must have been obtained with `asdf_asdfposspline()`.
 /// Each pointer can only be freed once.
 #[no_mangle]
-pub unsafe extern "C" fn asdf_asdfspline_free(ptr: *mut AsdfSpline) {
+pub unsafe extern "C" fn asdf_asdfposspline_free(ptr: *mut AsdfPosSpline) {
     if !ptr.is_null() {
         Box::from_raw(ptr);
     }
@@ -110,8 +110,8 @@ pub unsafe extern "C" fn asdf_asdfspline_free(ptr: *mut AsdfSpline) {
 /// `times` contains one `float` per element,
 /// `output` must provide space for *three* `float`s per element.
 #[no_mangle]
-pub unsafe extern "C" fn asdf_asdfspline_evaluate(
-    ptr: *mut AsdfSpline,
+pub unsafe extern "C" fn asdf_asdfposspline_evaluate(
+    ptr: *mut AsdfPosSpline,
     times: *const f32,
     count: size_t,
     output: *mut f32,
@@ -132,8 +132,8 @@ pub unsafe extern "C" fn asdf_asdfspline_evaluate(
 ///
 /// All pointers must be valid.
 #[no_mangle]
-pub unsafe extern "C" fn asdf_asdfspline_grid(
-    ptr: *mut AsdfSpline,
+pub unsafe extern "C" fn asdf_asdfposspline_grid(
+    ptr: *mut AsdfPosSpline,
     output: *mut *const f32,
 ) -> size_t {
     assert!(!ptr.is_null());

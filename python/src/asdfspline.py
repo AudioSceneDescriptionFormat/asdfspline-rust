@@ -75,22 +75,22 @@ class AsdfSpline(_FromPtr):
         tcb = _np.ascontiguousarray(tcb, dtype='float32')
         tcb_ptr = _ffi.from_buffer('float[]', tcb)
         ptr = _ffi.gc(
-            _lib.asdf_asdfspline(
+            _lib.asdf_asdfposspline(
                 positions_ptr, len(positions),
                 times_ptr, len(times),
                 speeds_ptr, len(speeds),
                 tcb_ptr, len(tcb),
                 closed,
                 ),
-            _lib.asdf_asdfspline_free)
+            _lib.asdf_asdfposspline_free)
         super().__init__(ptr)
 
     def evaluate(self, t):
-        return _evaluate(t, (3,), _lib.asdf_asdfspline_evaluate, self._ptr)
+        return _evaluate(t, (3,), _lib.asdf_asdfposspline_evaluate, self._ptr)
 
     @property
     def grid(self):
-        return _grid(_lib.asdf_asdfspline_grid, self._ptr)
+        return _grid(_lib.asdf_asdfposspline_grid, self._ptr)
 
 
 def _evaluate(t, extra_dim, func, ptr):

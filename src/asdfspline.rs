@@ -73,14 +73,14 @@ impl<S: Scalar> From<crate::centripetalkochanekbartelsspline::Error> for Error<S
     }
 }
 
-pub struct AsdfSpline<S, V> {
+pub struct AsdfPosSpline<S, V> {
     path: PiecewiseCubicCurve<S, V>,
     t2s: PiecewiseCubicCurve<S, S>, // Created via MonotoneCubicSpline
     grid: Box<[S]>,
     s_grid: Box<[S]>,
 }
 
-impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
+impl<S: Scalar, V: Vector<S>> AsdfPosSpline<S, V> {
     pub fn new<F: Fn(V) -> S>(
         positions: &[V],
         times: &[Option<S>],
@@ -88,7 +88,7 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
         tcb: &[[S; 3]],
         closed: bool,
         get_length: F,
-    ) -> Result<AsdfSpline<S, V>, Error<S>> {
+    ) -> Result<AsdfPosSpline<S, V>, Error<S>> {
         use Error::*;
         if positions.len() + closed as usize != times.len() {
             return Err(TimesVsPositions {
@@ -193,7 +193,7 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
         let t2s = t2s.into_inner();
         assert_eq!(path.grid().len(), grid.len());
         let s_grid = grid.iter().map(|&t| t2s.evaluate(t)).collect();
-        Ok(AsdfSpline {
+        Ok(AsdfPosSpline {
             path,
             t2s,
             grid: grid.into(),
@@ -260,7 +260,7 @@ impl<S: Scalar, V: Vector<S>> AsdfSpline<S, V> {
 mod tests {
     use super::*;
 
-    type AsdfSpline1 = AsdfSpline<f32, f32>;
+    type AsdfPosSpline1 = AsdfPosSpline<f32, f32>;
 
     fn get_length(x: f32) -> f32 {
         x.abs()
@@ -268,7 +268,7 @@ mod tests {
 
     #[test]
     fn simple_linear() {
-        let s = AsdfSpline1::new(
+        let s = AsdfPosSpline1::new(
             &[1.0, 2.0],
             &[None, Some(3.0)],
             &[None, None],
@@ -282,7 +282,7 @@ mod tests {
 
     #[test]
     fn simple_closed() {
-        let s = AsdfSpline1::new(
+        let s = AsdfPosSpline1::new(
             &[1.0, 2.0],
             &[None, None, Some(3.0)],
             &[None, None],
@@ -296,7 +296,7 @@ mod tests {
 
     #[test]
     fn closed_with_time() {
-        let s = AsdfSpline1::new(
+        let s = AsdfPosSpline1::new(
             &[1.0, 2.0],
             &[Some(3.0), Some(4.0), Some(5.0)],
             &[None, None],
