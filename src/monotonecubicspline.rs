@@ -3,7 +3,7 @@ use superslice::Ext; // for slice::equal_range_by()
 
 use crate::utilities::bisect;
 use crate::PiecewiseCubicCurve;
-use crate::Scalar;
+use crate::{Scalar, Spline};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error<S: Scalar> {

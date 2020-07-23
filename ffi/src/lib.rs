@@ -6,7 +6,7 @@ use std::slice;
 use libc::{c_char, size_t};
 use nalgebra_glm as glm;
 
-use asdfspline::{MonotoneCubicSpline, PiecewiseCubicCurve};
+use asdfspline::{AsdfPosSpline, MonotoneCubicSpline, PiecewiseCubicCurve, Spline};
 
 thread_local! {
     static LAST_ERROR: RefCell<CString> = RefCell::new(CString::new("no error").unwrap());
@@ -44,14 +44,26 @@ impl<T, E: Display> ResultExt<T, E> for Result<T, E> {
 
 pub type Vec2 = glm::TVec2<f32>;
 pub type Vec3 = glm::TVec3<f32>;
+
+fn norm2(v: Vec2) -> f32 {
+    v.norm()
+}
+
+fn norm3(v: Vec3) -> f32 {
+    v.norm()
+}
+
+// Explicitly named type to help cbindgen with name mangling
+type Norm3 = fn(Vec3) -> f32;
+
 /// A (three-dimensional) ASDF spline.
-pub type AsdfPosSpline = asdfspline::AsdfPosSpline<f32, Vec3>;
+pub type AsdfPosSpline3 = AsdfPosSpline<f32, Vec3, Norm3>;
 pub type AsdfCubicCurve3 = PiecewiseCubicCurve<f32, Vec3>;
 pub type AsdfCubicCurve2 = PiecewiseCubicCurve<f32, Vec2>;
 pub type AsdfCubicCurve1 = PiecewiseCubicCurve<f32, f32>;
 pub type AsdfMonotoneCubic = MonotoneCubicSpline<f32>;
 
-/// Creates an `AsdfPosSpline`.
+/// Creates an `AsdfPosSpline3`.
 ///
 /// Each element in `positions` (3D coordinates) and `tcb`
 /// (tension, continuity, bias) contains *three* `float` values,
@@ -62,7 +74,7 @@ pub type AsdfMonotoneCubic = MonotoneCubicSpline<f32>;
 /// All input pointers must be valid for the corresponding `*_count` numbers
 /// of elements (not bytes).
 #[no_mangle]
-pub unsafe extern "C" fn asdf_asdfposspline(
+pub unsafe extern "C" fn asdf_asdfposspline3(
     positions: *const f32,
     positions_count: size_t,
     times: *const f32,
@@ -72,7 +84,7 @@ pub unsafe extern "C" fn asdf_asdfposspline(
     tcb: *const f32,
     tcb_count: size_t,
     closed: bool,
-) -> *mut AsdfPosSpline {
+) -> *mut AsdfPosSpline3 {
     let positions: Vec<_> = slice::from_raw_parts(positions as *const [f32; 3], positions_count)
         .iter()
         .map(|coords| Vec3::from_column_slice(coords))
@@ -86,17 +98,17 @@ pub unsafe extern "C" fn asdf_asdfposspline(
         .map(|&t| if t.is_nan() { None } else { Some(t) })
         .collect();
     let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-    AsdfPosSpline::new(&positions, &times, &speeds, tcb, closed, |v| v.norm()).into_raw()
+    AsdfPosSpline3::new(&positions, &times, &speeds, tcb, closed, norm3).into_raw()
 }
 
-/// Frees an `AsdfPosSpline`
+/// Frees an `AsdfPosSpline3`
 ///
 /// # Safety
 ///
-/// The pointer must have been obtained with `asdf_asdfposspline()`.
+/// The pointer must have been obtained with `asdf_asdfposspline3()`.
 /// Each pointer can only be freed once.
 #[no_mangle]
-pub unsafe extern "C" fn asdf_asdfposspline_free(ptr: *mut AsdfPosSpline) {
+pub unsafe extern "C" fn asdf_asdfposspline3_free(ptr: *mut AsdfPosSpline3) {
     if !ptr.is_null() {
         Box::from_raw(ptr);
     }
@@ -110,8 +122,8 @@ pub unsafe extern "C" fn asdf_asdfposspline_free(ptr: *mut AsdfPosSpline) {
 /// `times` contains one `float` per element,
 /// `output` must provide space for *three* `float`s per element.
 #[no_mangle]
-pub unsafe extern "C" fn asdf_asdfposspline_evaluate(
-    ptr: *mut AsdfPosSpline,
+pub unsafe extern "C" fn asdf_asdfposspline3_evaluate(
+    ptr: *mut AsdfPosSpline3,
     times: *const f32,
     count: size_t,
     output: *mut f32,
@@ -119,7 +131,7 @@ pub unsafe extern "C" fn asdf_asdfposspline_evaluate(
     assert!(!ptr.is_null());
     let curve = &mut *ptr;
     for i in 0..count {
-        let v = curve.evaluate(*times.add(i), |v| v.norm());
+        let v = curve.evaluate(*times.add(i));
         *output.add(3 * i) = *v.as_ptr();
         *output.add(3 * i + 1) = *v.as_ptr().add(1);
         *output.add(3 * i + 2) = *v.as_ptr().add(2);
@@ -132,8 +144,8 @@ pub unsafe extern "C" fn asdf_asdfposspline_evaluate(
 ///
 /// All pointers must be valid.
 #[no_mangle]
-pub unsafe extern "C" fn asdf_asdfposspline_grid(
-    ptr: *mut AsdfPosSpline,
+pub unsafe extern "C" fn asdf_asdfposspline3_grid(
+    ptr: *mut AsdfPosSpline3,
     output: *mut *const f32,
 ) -> size_t {
     assert!(!ptr.is_null());
@@ -166,8 +178,7 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline3(
         .map(|coords| Vec3::from_column_slice(coords))
         .collect();
     let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed, |v| v.norm())
-        .into_raw()
+    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed, norm3).into_raw()
 }
 
 /// Creates a two-dimensional KB-spline.
@@ -193,8 +204,7 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline2(
         .map(|coords| Vec2::from_column_slice(coords))
         .collect();
     let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed, |v| v.norm())
-        .into_raw()
+    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed, norm2).into_raw()
 }
 
 /// Creates a one-dimensional shape-preserving cubic spline.

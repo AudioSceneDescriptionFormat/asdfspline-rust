@@ -83,6 +83,8 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
 mod tests {
     use super::*;
 
+    use crate::Spline; // for grid()
+
     #[test]
     fn test_1d() {
         let positions = [1.0, 2.0];

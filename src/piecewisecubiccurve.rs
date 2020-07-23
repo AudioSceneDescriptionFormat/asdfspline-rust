@@ -1,8 +1,8 @@
 use num_traits::one;
 use superslice::Ext; // for slice::upper_bound_by()
 
-use crate::utilities::{check_grid, gauss_legendre13, GridError};
-use crate::{Scalar, Vector};
+use crate::utilities::{check_grid, GridError};
+use crate::{Scalar, Spline, SplineWithVelocity, Vector};
 
 pub struct PiecewiseCubicCurve<S, V> {
     segments: Box<[[V; 4]]>,
@@ -52,47 +52,8 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
         Ok(PiecewiseCubicCurve { segments, grid })
     }
 
-    pub fn evaluate(&self, t: S) -> V {
-        let (t, t0, t1, a) = self.get_segment(t);
-        let t = (t - t0) / (t1 - t0);
-        ((a[3] * t + a[2]) * t + a[1]) * t + a[0]
-    }
-
-    pub fn evaluate_velocity(&self, t: S) -> V {
-        let (t, t0, t1, coeffs) = self.get_segment(t);
-        PiecewiseCubicCurve::segment_velocity(t, t0, t1, coeffs)
-    }
-
     pub fn segments(&self) -> &[[V; 4]] {
         &self.segments
-    }
-
-    pub fn grid(&self) -> &[S] {
-        &self.grid
-    }
-
-    pub fn segment_length<F>(&self, index: usize, get_length: F) -> S
-    where
-        F: Fn(V) -> S,
-    {
-        let t0 = self.grid[index];
-        let t1 = self.grid[index + 1];
-        self.segment_partial_length(index, t0, t1, get_length)
-    }
-
-    pub fn segment_partial_length<F>(&self, index: usize, a: S, b: S, get_length: F) -> S
-    where
-        F: Fn(V) -> S,
-    {
-        assert!(a <= b);
-        let coeffs = self.segments[index];
-        let t0 = self.grid[index];
-        let t1 = self.grid[index + 1];
-        assert!(t0 <= a);
-        assert!(b <= t1);
-
-        let speed = |t| get_length(PiecewiseCubicCurve::segment_velocity(t, t0, t1, &coeffs));
-        gauss_legendre13(speed, a, b)
     }
 
     // If t is out of bounds, it is trimmed to the smallest/largest possible value
@@ -113,8 +74,23 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
         };
         (t, self.grid[idx], self.grid[idx + 1], &self.segments[idx])
     }
+}
 
-    fn segment_velocity(t: S, t0: S, t1: S, a: &[V; 4]) -> V {
+impl<S: Scalar, V: Vector<S>> Spline<S, V> for PiecewiseCubicCurve<S, V> {
+    fn evaluate(&self, t: S) -> V {
+        let (t, t0, t1, a) = self.get_segment(t);
+        let t = (t - t0) / (t1 - t0);
+        ((a[3] * t + a[2]) * t + a[1]) * t + a[0]
+    }
+
+    fn grid(&self) -> &[S] {
+        &self.grid
+    }
+}
+
+impl<S: Scalar, V: Vector<S>> SplineWithVelocity<S, V, V> for PiecewiseCubicCurve<S, V> {
+    fn evaluate_velocity(&self, t: S) -> V {
+        let (t, t0, t1, a) = self.get_segment(t);
         let t = (t - t0) / (t1 - t0);
         let one: S = one();
         let two = one + one;
@@ -156,22 +132,22 @@ mod tests {
     #[test]
     fn segment_length() {
         let curve = make_simple_curve();
-        assert_eq!(curve.segment_length(0, |x| x.abs()), 9.5);
-        assert_eq!(curve.segment_partial_length(0, 5.0, 5.5, |x| x.abs()), 2.5);
+        assert_eq!(curve.integrated_speed(0, 5.0, 6.0, &|x| x.abs()), 9.5);
+        assert_eq!(curve.integrated_speed(0, 5.0, 5.5, &|x| x.abs()), 2.5);
     }
 
     #[test]
     #[should_panic(expected = "assertion failed")]
     fn segment_length_early_begin() {
         let curve = make_simple_curve();
-        curve.segment_partial_length(0, 4.9, 5.5, |x| x.abs());
+        curve.integrated_speed(0, 4.9, 5.5, &|x| x.abs());
     }
 
     #[test]
     #[should_panic(expected = "assertion failed")]
     fn segment_length_late_end() {
         let curve = make_simple_curve();
-        curve.segment_partial_length(0, 5.1, 6.1, |x| x.abs());
+        curve.integrated_speed(0, 5.1, 6.1, &|x| x.abs());
     }
 
     #[test]

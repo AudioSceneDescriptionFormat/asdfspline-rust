@@ -70,27 +70,32 @@ class AsdfSpline(_FromPtr):
                     'last vertex cannot have tension/continuity/bias '
                     '(except for closed curves)')
         positions, positions_ptr = _make_buffer(3, positions)
+        if _np.isnan(times[0]):
+            # NB: NaN <= 0 returns False
+            if any(t <= 0 for t in times):
+                raise ValueError('first time defaults to 0 if other times > 0')
+            times[0] = 0
         times, times_ptr = _make_buffer(1, times)
         speeds, speeds_ptr = _make_buffer(1, speeds)
         tcb = _np.ascontiguousarray(tcb, dtype='float32')
         tcb_ptr = _ffi.from_buffer('float[]', tcb)
         ptr = _ffi.gc(
-            _lib.asdf_asdfposspline(
+            _lib.asdf_asdfposspline3(
                 positions_ptr, len(positions),
                 times_ptr, len(times),
                 speeds_ptr, len(speeds),
                 tcb_ptr, len(tcb),
                 closed,
                 ),
-            _lib.asdf_asdfposspline_free)
+            _lib.asdf_asdfposspline3_free)
         super().__init__(ptr)
 
     def evaluate(self, t):
-        return _evaluate(t, (3,), _lib.asdf_asdfposspline_evaluate, self._ptr)
+        return _evaluate(t, (3,), _lib.asdf_asdfposspline3_evaluate, self._ptr)
 
     @property
     def grid(self):
-        return _grid(_lib.asdf_asdfposspline_grid, self._ptr)
+        return _grid(_lib.asdf_asdfposspline3_grid, self._ptr)
 
 
 def _evaluate(t, extra_dim, func, ptr):

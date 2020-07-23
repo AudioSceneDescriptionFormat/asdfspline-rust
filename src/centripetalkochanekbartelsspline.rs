@@ -155,16 +155,20 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
 mod tests {
     use super::*;
 
+    use crate::Spline; // for evaluate(), grid()
+
     #[test]
     fn test_1d() {
         let positions = [1.0f32, 2.0, 3.0].to_vec();
         let tcb = [[4.0, 5.0, 6.0]];
         let closed = false;
-        let curve =
-            PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, &tcb, closed, |x| {
-                x.abs()
-            })
-            .unwrap();
+        let curve = PiecewiseCubicCurve::new_centripetal_kochanek_bartels(
+            &positions,
+            &tcb,
+            closed,
+            &|x: f32| x.abs(),
+        )
+        .unwrap();
         assert_eq!(curve.grid()[0], 0.0);
         assert_eq!(curve.evaluate(0.0), 1.0);
         assert_eq!(curve.evaluate(*curve.grid().last().unwrap()), 3.0);

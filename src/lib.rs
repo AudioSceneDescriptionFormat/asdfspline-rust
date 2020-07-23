@@ -38,6 +38,7 @@ use std::ops::{Add, Div, DivAssign, Mul, Sub};
 
 use num_traits::{Float, FromPrimitive, NumAssign};
 
+pub mod adapters;
 pub mod asdfspline;
 pub mod centripetalkochanekbartelsspline;
 pub mod cubichermitespline;
@@ -49,6 +50,8 @@ pub mod utilities;
 pub use crate::asdfspline::AsdfPosSpline;
 pub use crate::monotonecubicspline::MonotoneCubicSpline;
 pub use crate::piecewisecubiccurve::PiecewiseCubicCurve;
+
+use crate::utilities::gauss_legendre13;
 
 /// A trait that is automatically implemented for all types that can be used as scalars,
 /// e.g. time values.
@@ -76,4 +79,31 @@ where
     Self: Mul<S, Output = Self> + Div<S, Output = Self>,
     Self: DivAssign<S>,
 {
+}
+
+pub trait Spline<S, Output>
+where
+    S: Scalar,
+{
+    fn evaluate(&self, t: S) -> Output;
+    fn grid(&self) -> &[S];
+}
+
+pub trait SplineWithVelocity<S, Output, Velocity>: Spline<S, Output>
+where
+    S: Scalar,
+    Velocity: Vector<S>,
+{
+    fn evaluate_velocity(&self, t: S) -> Velocity;
+
+    fn integrated_speed<F>(&self, index: usize, a: S, b: S, get_length: &F) -> S
+    where
+        F: Fn(Velocity) -> S,
+    {
+        assert!(a <= b);
+        assert!(self.grid()[index] <= a);
+        assert!(b <= self.grid()[index + 1]);
+        let speed = |t| get_length(self.evaluate_velocity(t));
+        gauss_legendre13(speed, a, b)
+    }
 }
