@@ -89,6 +89,12 @@ where
     fn grid(&self) -> &[S];
 }
 
+/// To work around Rust's orphan rules, see https://blog.mgattozzi.dev/orphan-rules/
+pub trait NormWrapper<Dummy> {
+    type Norm;
+    fn norm(&self) -> Self::Norm;
+}
+
 pub trait SplineWithVelocity<S, Output, Velocity>: Spline<S, Output>
 where
     S: Scalar,
@@ -96,14 +102,13 @@ where
 {
     fn evaluate_velocity(&self, t: S) -> Velocity;
 
-    fn integrated_speed<F>(&self, index: usize, a: S, b: S, get_length: &F) -> S
+    fn integrated_speed<Dummy>(&self, index: usize, a: S, b: S) -> S
     where
-        F: Fn(Velocity) -> S,
+        Velocity: NormWrapper<Dummy, Norm = S>,
     {
         assert!(a <= b);
         assert!(self.grid()[index] <= a);
         assert!(b <= self.grid()[index + 1]);
-        let speed = |t| get_length(self.evaluate_velocity(t));
-        gauss_legendre13(speed, a, b)
+        gauss_legendre13(|t| self.evaluate_velocity(t).norm(), a, b)
     }
 }

@@ -1,5 +1,5 @@
 use crate::adapters::{ConstantSpeedAdapter, NewGridAdapter};
-use crate::{PiecewiseCubicCurve, Scalar, Vector};
+use crate::{NormWrapper, PiecewiseCubicCurve, Scalar, Vector};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error<S: Scalar> {
@@ -100,14 +100,13 @@ impl<S: Scalar> From<crate::adapters::NewGridWithSpeedsError<S>> for Error<S> {
     }
 }
 
-pub type AsdfPosSpline<S, V, F> =
-    NewGridAdapter<S, V, ConstantSpeedAdapter<S, V, V, PiecewiseCubicCurve<S, V>, F>>;
+pub type AsdfPosSpline<S, V, Dummy> =
+    NewGridAdapter<S, V, ConstantSpeedAdapter<S, V, V, PiecewiseCubicCurve<S, V>, Dummy>>;
 
-impl<S, V, F> AsdfPosSpline<S, V, F>
+impl<S, V, Dummy> AsdfPosSpline<S, V, Dummy>
 where
     S: Scalar,
-    V: Vector<S>,
-    F: Fn(V) -> S,
+    V: Vector<S> + NormWrapper<Dummy, Norm = S>,
 {
     pub fn new(
         positions: &[V],
@@ -115,8 +114,7 @@ where
         speeds: &[Option<S>],
         tcb: &[[S; 3]],
         closed: bool,
-        get_length: F,
-    ) -> Result<AsdfPosSpline<S, V, F>, Error<S>> {
+    ) -> Result<AsdfPosSpline<S, V, Dummy>, Error<S>> {
         use Error::*;
         if positions.len() + closed as usize != times.len() {
             return Err(TimesVsPositions {
@@ -131,13 +129,8 @@ where
                 positions: positions.len(),
             });
         }
-        let path = PiecewiseCubicCurve::new_centripetal_kochanek_bartels(
-            positions,
-            tcb,
-            closed,
-            &get_length,
-        )?;
-        let constant_speed = ConstantSpeedAdapter::adapt(path, get_length);
+        let path = PiecewiseCubicCurve::new_centripetal_kochanek_bartels(positions, tcb, closed)?;
+        let constant_speed = ConstantSpeedAdapter::adapt(path);
         Ok(NewGridAdapter::adapt_with_speeds(
             constant_speed,
             times,
@@ -154,11 +147,17 @@ mod tests {
 
     use crate::Spline; // for evaluate()
 
-    type AsdfPosSpline1<F> = AsdfPosSpline<f32, f32, F>;
+    struct DummyF32;
 
-    fn get_length(x: f32) -> f32 {
-        x.abs()
+    impl NormWrapper<DummyF32> for f32 {
+        type Norm = f32;
+
+        fn norm(&self) -> Self::Norm {
+            self.abs()
+        }
     }
+
+    type AsdfPosSpline1 = AsdfPosSpline<f32, f32, DummyF32>;
 
     #[test]
     fn simple_linear() {
@@ -168,7 +167,6 @@ mod tests {
             &[None, None],
             &[],
             false,
-            get_length,
         )
         .unwrap();
         assert_eq!(s.evaluate(1.5), 1.5);
@@ -182,7 +180,6 @@ mod tests {
             &[None, None],
             &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
             true,
-            get_length,
         )
         .unwrap();
         assert_eq!(s.evaluate(1.5), 2.0);
@@ -196,7 +193,6 @@ mod tests {
             &[None, None],
             &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
             true,
-            get_length,
         )
         .unwrap();
         assert_eq!(s.evaluate(4.0), 2.0);

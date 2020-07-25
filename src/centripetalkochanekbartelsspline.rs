@@ -1,7 +1,6 @@
 use num_traits::{one, pow, zero};
 
-use crate::PiecewiseCubicCurve;
-use crate::{Scalar, Vector};
+use crate::{NormWrapper, PiecewiseCubicCurve, Scalar, Vector};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -22,13 +21,14 @@ pub enum Error {
 }
 
 impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
-    // TODO: require alga::linear::NormedSpace to get norm() method for vectors?
-    pub fn new_centripetal_kochanek_bartels<F: Fn(V) -> S>(
+    pub fn new_centripetal_kochanek_bartels<Dummy>(
         positions: &[V],
         tcb: &[[S; 3]],
         closed: bool,
-        get_length: F,
-    ) -> Result<PiecewiseCubicCurve<S, V>, Error> {
+    ) -> Result<PiecewiseCubicCurve<S, V>, Error>
+    where
+        V: NormWrapper<Dummy, Norm = S>,
+    {
         use Error::*;
         let positions_len = positions.len();
         if positions_len < 2 {
@@ -63,7 +63,7 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
         for i in 0..positions.len() - 1 {
             let x0 = positions[i];
             let x1 = positions[i + 1];
-            let delta = get_length(x1 - x0).sqrt();
+            let delta = (x1 - x0).norm().sqrt();
             if delta == zero() {
                 return Err(RepeatedPosition { index: i + 1 });
             }
@@ -157,16 +157,23 @@ mod tests {
 
     use crate::Spline; // for evaluate(), grid()
 
+    struct DummyF32;
+
+    impl NormWrapper<DummyF32> for f32 {
+        type Norm = f32;
+
+        fn norm(&self) -> Self::Norm {
+            self.abs()
+        }
+    }
+
     #[test]
     fn test_1d() {
         let positions = [1.0f32, 2.0, 3.0].to_vec();
         let tcb = [[4.0, 5.0, 6.0]];
         let closed = false;
-        let curve = PiecewiseCubicCurve::new_centripetal_kochanek_bartels(
-            &positions,
-            &tcb,
-            closed,
-            &|x: f32| x.abs(),
+        let curve = PiecewiseCubicCurve::new_centripetal_kochanek_bartels::<DummyF32>(
+            &positions, &tcb, closed,
         )
         .unwrap();
         assert_eq!(curve.grid()[0], 0.0);

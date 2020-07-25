@@ -4,33 +4,31 @@ use num_traits::zero;
 use superslice::Ext; // for slice::upper_bound_by()
 
 use crate::utilities::bisect;
-use crate::{MonotoneCubicSpline, PiecewiseCubicCurve, Scalar, Spline, SplineWithVelocity, Vector};
+use crate::{
+    MonotoneCubicSpline, NormWrapper, PiecewiseCubicCurve, Scalar, Spline, SplineWithVelocity,
+    Vector,
+};
 
-pub struct ConstantSpeedAdapter<S, Output, Velocity, Inner, F>
+pub struct ConstantSpeedAdapter<S, Output, Velocity, Inner, Dummy>
 where
     S: Scalar,
-    Velocity: Vector<S>,
+    Velocity: Vector<S> + NormWrapper<Dummy, Norm = S>,
     Inner: SplineWithVelocity<S, Output, Velocity>,
-    F: Fn(Velocity) -> S,
 {
     inner: Inner,
-    get_length: F,
     grid: Box<[S]>,
     _phantom_output: PhantomData<Output>,
     _phantom_velocity: PhantomData<Velocity>,
+    _phantom_dummy: PhantomData<Dummy>,
 }
 
-impl<S, Output, Velocity, Inner, F> ConstantSpeedAdapter<S, Output, Velocity, Inner, F>
+impl<S, Output, Velocity, Inner, Dummy> ConstantSpeedAdapter<S, Output, Velocity, Inner, Dummy>
 where
     S: Scalar,
-    Velocity: Vector<S>,
+    Velocity: Vector<S> + NormWrapper<Dummy, Norm = S>,
     Inner: SplineWithVelocity<S, Output, Velocity>,
-    F: Fn(Velocity) -> S,
 {
-    pub fn adapt(
-        inner: Inner,
-        get_length: F,
-    ) -> ConstantSpeedAdapter<S, Output, Velocity, Inner, F> {
+    pub fn adapt(inner: Inner) -> ConstantSpeedAdapter<S, Output, Velocity, Inner, Dummy> {
         let mut grid = Vec::with_capacity(inner.grid().len());
         grid.push(zero());
         let grid = inner
@@ -39,7 +37,7 @@ where
             .enumerate()
             .fold(grid, |mut l, (i, ts)| {
                 if let [t0, t1] = *ts {
-                    l.push(*l.last().unwrap() + inner.integrated_speed(i, t0, t1, &get_length));
+                    l.push(*l.last().unwrap() + inner.integrated_speed(i, t0, t1));
                     l
                 } else {
                     unreachable!()
@@ -47,10 +45,10 @@ where
             });
         ConstantSpeedAdapter {
             inner,
-            get_length,
             grid: grid.into(),
             _phantom_output: PhantomData,
             _phantom_velocity: PhantomData,
+            _phantom_dummy: PhantomData,
         }
     }
 
@@ -73,18 +71,17 @@ where
         s -= self.grid[index];
         let t0 = self.inner.grid()[index];
         let t1 = self.inner.grid()[index + 1];
-        let func = |t| self.inner.integrated_speed(index, t0, t, &self.get_length) - s;
+        let func = |t| self.inner.integrated_speed(index, t0, t) - s;
         bisect(func, t0, t1, accuracy, 50)
     }
 }
 
-impl<S, Output, Velocity, Inner, F> Spline<S, Output>
-    for ConstantSpeedAdapter<S, Output, Velocity, Inner, F>
+impl<S, Output, Velocity, Inner, Dummy> Spline<S, Output>
+    for ConstantSpeedAdapter<S, Output, Velocity, Inner, Dummy>
 where
     S: Scalar,
-    Velocity: Vector<S>,
+    Velocity: Vector<S> + NormWrapper<Dummy, Norm = S>,
     Inner: SplineWithVelocity<S, Output, Velocity>,
-    F: Fn(Velocity) -> S,
 {
     fn evaluate(&self, s: S) -> Output {
         self.inner.evaluate(self.s2t(s))

@@ -88,7 +88,11 @@ impl<S: Scalar, V: Vector<S>> Spline<S, V> for PiecewiseCubicCurve<S, V> {
     }
 }
 
-impl<S: Scalar, V: Vector<S>> SplineWithVelocity<S, V, V> for PiecewiseCubicCurve<S, V> {
+impl<S, V> SplineWithVelocity<S, V, V> for PiecewiseCubicCurve<S, V>
+where
+    S: Scalar,
+    V: Vector<S>,
+{
     fn evaluate_velocity(&self, t: S) -> V {
         let (t, t0, t1, a) = self.get_segment(t);
         let t = (t - t0) / (t1 - t0);
@@ -103,6 +107,18 @@ impl<S: Scalar, V: Vector<S>> SplineWithVelocity<S, V, V> for PiecewiseCubicCurv
 #[allow(clippy::float_cmp)]
 mod tests {
     use super::*;
+
+    use crate::NormWrapper;
+
+    struct DummyF32;
+
+    impl NormWrapper<DummyF32> for f32 {
+        type Norm = f32;
+
+        fn norm(&self) -> Self::Norm {
+            self.abs()
+        }
+    }
 
     fn make_simple_curve() -> PiecewiseCubicCurve<f32, f32> {
         PiecewiseCubicCurve {
@@ -132,22 +148,22 @@ mod tests {
     #[test]
     fn segment_length() {
         let curve = make_simple_curve();
-        assert_eq!(curve.integrated_speed(0, 5.0, 6.0, &|x| x.abs()), 9.5);
-        assert_eq!(curve.integrated_speed(0, 5.0, 5.5, &|x| x.abs()), 2.5);
+        assert_eq!(curve.integrated_speed::<DummyF32>(0, 5.0, 6.0), 9.5);
+        assert_eq!(curve.integrated_speed::<DummyF32>(0, 5.0, 5.5), 2.5);
     }
 
     #[test]
     #[should_panic(expected = "assertion failed")]
     fn segment_length_early_begin() {
         let curve = make_simple_curve();
-        curve.integrated_speed(0, 4.9, 5.5, &|x| x.abs());
+        curve.integrated_speed::<DummyF32>(0, 4.9, 5.5);
     }
 
     #[test]
     #[should_panic(expected = "assertion failed")]
     fn segment_length_late_end() {
         let curve = make_simple_curve();
-        curve.integrated_speed(0, 5.1, 6.1, &|x| x.abs());
+        curve.integrated_speed::<DummyF32>(0, 5.1, 6.1);
     }
 
     #[test]

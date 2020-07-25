@@ -6,7 +6,7 @@ use std::slice;
 use libc::{c_char, size_t};
 use nalgebra_glm as glm;
 
-use asdfspline::{AsdfPosSpline, MonotoneCubicSpline, PiecewiseCubicCurve, Spline};
+use asdfspline::{AsdfPosSpline, MonotoneCubicSpline, NormWrapper, PiecewiseCubicCurve, Spline};
 
 thread_local! {
     static LAST_ERROR: RefCell<CString> = RefCell::new(CString::new("no error").unwrap());
@@ -45,19 +45,28 @@ impl<T, E: Display> ResultExt<T, E> for Result<T, E> {
 pub type Vec2 = glm::TVec2<f32>;
 pub type Vec3 = glm::TVec3<f32>;
 
-fn norm2(v: Vec2) -> f32 {
-    v.norm()
+struct DummyVec2;
+
+impl NormWrapper<DummyVec2> for Vec2 {
+    type Norm = f32;
+
+    fn norm(&self) -> Self::Norm {
+        self.norm()
+    }
 }
 
-fn norm3(v: Vec3) -> f32 {
-    v.norm()
-}
+pub struct DummyVec3;
 
-// Explicitly named type to help cbindgen with name mangling
-type Norm3 = fn(Vec3) -> f32;
+impl NormWrapper<DummyVec3> for Vec3 {
+    type Norm = f32;
+
+    fn norm(&self) -> Self::Norm {
+        self.norm()
+    }
+}
 
 /// A (three-dimensional) ASDF spline.
-pub type AsdfPosSpline3 = AsdfPosSpline<f32, Vec3, Norm3>;
+pub type AsdfPosSpline3 = AsdfPosSpline<f32, Vec3, DummyVec3>;
 pub type AsdfCubicCurve3 = PiecewiseCubicCurve<f32, Vec3>;
 pub type AsdfCubicCurve2 = PiecewiseCubicCurve<f32, Vec2>;
 pub type AsdfCubicCurve1 = PiecewiseCubicCurve<f32, f32>;
@@ -98,7 +107,7 @@ pub unsafe extern "C" fn asdf_asdfposspline3(
         .map(|&t| if t.is_nan() { None } else { Some(t) })
         .collect();
     let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-    AsdfPosSpline3::new(&positions, &times, &speeds, tcb, closed, norm3).into_raw()
+    AsdfPosSpline3::new(&positions, &times, &speeds, tcb, closed).into_raw()
 }
 
 /// Frees an `AsdfPosSpline3`
@@ -178,7 +187,7 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline3(
         .map(|coords| Vec3::from_column_slice(coords))
         .collect();
     let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed, norm3).into_raw()
+    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed).into_raw()
 }
 
 /// Creates a two-dimensional KB-spline.
@@ -204,7 +213,7 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline2(
         .map(|coords| Vec2::from_column_slice(coords))
         .collect();
     let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed, norm2).into_raw()
+    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed).into_raw()
 }
 
 /// Creates a one-dimensional shape-preserving cubic spline.
