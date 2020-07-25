@@ -45,6 +45,7 @@ pub mod centripetalkochanekbartelsspline;
 pub mod cubichermitespline;
 pub mod monotonecubicspline;
 pub mod piecewisecubiccurve;
+pub mod quaternion;
 pub mod shapepreservingcubicspline;
 pub mod utilities;
 
@@ -56,9 +57,9 @@ use crate::utilities::gauss_legendre13;
 
 /// A trait that is automatically implemented for all types that can be used as scalars,
 /// e.g. time values.
-pub trait Scalar: Float + NumAssign + FromPrimitive + Debug {}
+pub trait Scalar: 'static + Float + NumAssign + FromPrimitive + Debug {}
 
-impl<T: Float + NumAssign + FromPrimitive + Debug> Scalar for T {}
+impl<T: 'static + Float + NumAssign + FromPrimitive + Debug> Scalar for T {}
 
 /// A trait that is automatically implemented for all types that can be used as positions,
 /// polynomial coefficients, tangent vectors etc.

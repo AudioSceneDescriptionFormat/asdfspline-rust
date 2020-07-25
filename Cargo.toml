@@ -12,3 +12,5 @@ members = ["ffi"]
 num-traits = "0.2"
 superslice = "1"
 thiserror = "1.0"
+nalgebra = "0.21"
+simba = "0.1"
