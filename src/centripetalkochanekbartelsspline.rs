@@ -21,13 +21,13 @@ pub enum Error {
 }
 
 impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
-    pub fn new_centripetal_kochanek_bartels<Dummy>(
+    pub fn new_centripetal_kochanek_bartels<U>(
         positions: &[V],
         tcb: &[[S; 3]],
         closed: bool,
     ) -> Result<PiecewiseCubicCurve<S, V>, Error>
     where
-        V: NormWrapper<Dummy, Norm = S>,
+        V: NormWrapper<U, Norm = S>,
     {
         use Error::*;
         let positions_len = positions.len();
@@ -157,9 +157,9 @@ mod tests {
 
     use crate::Spline; // for evaluate(), grid()
 
-    struct DummyF32;
+    struct NormF32;
 
-    impl NormWrapper<DummyF32> for f32 {
+    impl NormWrapper<NormF32> for f32 {
         type Norm = f32;
 
         fn norm(&self) -> Self::Norm {
@@ -172,7 +172,7 @@ mod tests {
         let positions = [1.0f32, 2.0, 3.0].to_vec();
         let tcb = [[4.0, 5.0, 6.0]];
         let closed = false;
-        let curve = PiecewiseCubicCurve::new_centripetal_kochanek_bartels::<DummyF32>(
+        let curve = PiecewiseCubicCurve::new_centripetal_kochanek_bartels::<NormF32>(
             &positions, &tcb, closed,
         )
         .unwrap();

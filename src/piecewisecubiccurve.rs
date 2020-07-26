@@ -110,9 +110,9 @@ mod tests {
 
     use crate::NormWrapper;
 
-    struct DummyF32;
+    struct NormF32;
 
-    impl NormWrapper<DummyF32> for f32 {
+    impl NormWrapper<NormF32> for f32 {
         type Norm = f32;
 
         fn norm(&self) -> Self::Norm {
@@ -148,22 +148,22 @@ mod tests {
     #[test]
     fn segment_length() {
         let curve = make_simple_curve();
-        assert_eq!(curve.integrated_speed::<DummyF32>(0, 5.0, 6.0), 9.5);
-        assert_eq!(curve.integrated_speed::<DummyF32>(0, 5.0, 5.5), 2.5);
+        assert_eq!(curve.integrated_speed::<NormF32>(0, 5.0, 6.0), 9.5);
+        assert_eq!(curve.integrated_speed::<NormF32>(0, 5.0, 5.5), 2.5);
     }
 
     #[test]
     #[should_panic(expected = "assertion failed")]
     fn segment_length_early_begin() {
         let curve = make_simple_curve();
-        curve.integrated_speed::<DummyF32>(0, 4.9, 5.5);
+        curve.integrated_speed::<NormF32>(0, 4.9, 5.5);
     }
 
     #[test]
     #[should_panic(expected = "assertion failed")]
     fn segment_length_late_end() {
         let curve = make_simple_curve();
-        curve.integrated_speed::<DummyF32>(0, 5.1, 6.1);
+        curve.integrated_speed::<NormF32>(0, 5.1, 6.1);
     }
 
     #[test]

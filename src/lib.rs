@@ -90,7 +90,7 @@ where
 }
 
 /// To work around Rust's orphan rules, see https://blog.mgattozzi.dev/orphan-rules/
-pub trait NormWrapper<Dummy> {
+pub trait NormWrapper<U> {
     type Norm;
     fn norm(&self) -> Self::Norm;
 }
@@ -102,9 +102,9 @@ where
 {
     fn evaluate_velocity(&self, t: S) -> Velocity;
 
-    fn integrated_speed<Dummy>(&self, index: usize, a: S, b: S) -> S
+    fn integrated_speed<U>(&self, index: usize, a: S, b: S) -> S
     where
-        Velocity: NormWrapper<Dummy, Norm = S>,
+        Velocity: NormWrapper<U, Norm = S>,
     {
         assert!(a <= b);
         assert!(self.grid()[index] <= a);

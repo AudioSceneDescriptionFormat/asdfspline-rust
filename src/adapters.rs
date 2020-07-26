@@ -9,26 +9,26 @@ use crate::{
     Vector,
 };
 
-pub struct ConstantSpeedAdapter<S, Output, Velocity, Inner, Dummy>
+pub struct ConstantSpeedAdapter<S, Output, Velocity, Inner, U>
 where
     S: Scalar,
-    Velocity: Vector<S> + NormWrapper<Dummy, Norm = S>,
+    Velocity: Vector<S> + NormWrapper<U, Norm = S>,
     Inner: SplineWithVelocity<S, Output, Velocity>,
 {
     inner: Inner,
     grid: Box<[S]>,
     _phantom_output: PhantomData<Output>,
     _phantom_velocity: PhantomData<Velocity>,
-    _phantom_dummy: PhantomData<Dummy>,
+    _phantom_dummy: PhantomData<U>,
 }
 
-impl<S, Output, Velocity, Inner, Dummy> ConstantSpeedAdapter<S, Output, Velocity, Inner, Dummy>
+impl<S, Output, Velocity, Inner, U> ConstantSpeedAdapter<S, Output, Velocity, Inner, U>
 where
     S: Scalar,
-    Velocity: Vector<S> + NormWrapper<Dummy, Norm = S>,
+    Velocity: Vector<S> + NormWrapper<U, Norm = S>,
     Inner: SplineWithVelocity<S, Output, Velocity>,
 {
-    pub fn adapt(inner: Inner) -> ConstantSpeedAdapter<S, Output, Velocity, Inner, Dummy> {
+    pub fn adapt(inner: Inner) -> ConstantSpeedAdapter<S, Output, Velocity, Inner, U> {
         let mut grid = Vec::with_capacity(inner.grid().len());
         grid.push(zero());
         let grid = inner
@@ -76,11 +76,11 @@ where
     }
 }
 
-impl<S, Output, Velocity, Inner, Dummy> Spline<S, Output>
-    for ConstantSpeedAdapter<S, Output, Velocity, Inner, Dummy>
+impl<S, Output, Velocity, Inner, U> Spline<S, Output>
+    for ConstantSpeedAdapter<S, Output, Velocity, Inner, U>
 where
     S: Scalar,
-    Velocity: Vector<S> + NormWrapper<Dummy, Norm = S>,
+    Velocity: Vector<S> + NormWrapper<U, Norm = S>,
     Inner: SplineWithVelocity<S, Output, Velocity>,
 {
     fn evaluate(&self, s: S) -> Output {

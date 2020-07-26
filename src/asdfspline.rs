@@ -100,13 +100,13 @@ impl<S: Scalar> From<crate::adapters::NewGridWithSpeedsError<S>> for Error<S> {
     }
 }
 
-pub type AsdfPosSpline<S, V, Dummy> =
-    NewGridAdapter<S, V, ConstantSpeedAdapter<S, V, V, PiecewiseCubicCurve<S, V>, Dummy>>;
+pub type AsdfPosSpline<S, V, U> =
+    NewGridAdapter<S, V, ConstantSpeedAdapter<S, V, V, PiecewiseCubicCurve<S, V>, U>>;
 
-impl<S, V, Dummy> AsdfPosSpline<S, V, Dummy>
+impl<S, V, U> AsdfPosSpline<S, V, U>
 where
     S: Scalar,
-    V: Vector<S> + NormWrapper<Dummy, Norm = S>,
+    V: Vector<S> + NormWrapper<U, Norm = S>,
 {
     pub fn new(
         positions: &[V],
@@ -114,7 +114,7 @@ where
         speeds: &[Option<S>],
         tcb: &[[S; 3]],
         closed: bool,
-    ) -> Result<AsdfPosSpline<S, V, Dummy>, Error<S>> {
+    ) -> Result<AsdfPosSpline<S, V, U>, Error<S>> {
         use Error::*;
         if positions.len() + closed as usize != times.len() {
             return Err(TimesVsPositions {
@@ -147,9 +147,9 @@ mod tests {
 
     use crate::Spline; // for evaluate()
 
-    struct DummyF32;
+    struct NormF32;
 
-    impl NormWrapper<DummyF32> for f32 {
+    impl NormWrapper<NormF32> for f32 {
         type Norm = f32;
 
         fn norm(&self) -> Self::Norm {
@@ -157,7 +157,7 @@ mod tests {
         }
     }
 
-    type AsdfPosSpline1 = AsdfPosSpline<f32, f32, DummyF32>;
+    type AsdfPosSpline1 = AsdfPosSpline<f32, f32, NormF32>;
 
     #[test]
     fn simple_linear() {
