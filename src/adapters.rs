@@ -1,7 +1,6 @@
 use std::marker::PhantomData;
 
 use num_traits::zero;
-use superslice::Ext; // for slice::upper_bound_by()
 
 use crate::utilities::bisect;
 use crate::{
@@ -58,20 +57,12 @@ where
         // TODO: proper accuracy (a bit less than single-precision?)
         // TODO: a separate version for f64?
         let accuracy = S::from_f32(0.0001).unwrap();
-
-        let index = if s <= *self.grid.first().unwrap() {
-            return *self.inner.grid().first().unwrap();
-        } else if s < *self.grid.last().unwrap() {
-            // NB: This doesn't work if a value is NaN (but this shouldn't happen anyway)
-            self.grid.upper_bound_by(|x| x.partial_cmp(&s).unwrap()) - 1
-        } else {
-            return *self.inner.grid().last().unwrap();
-        };
+        let (s, idx) = self.clamp_parameter_and_find_index(s);
         let mut s = s;
-        s -= self.grid[index];
-        let t0 = self.inner.grid()[index];
-        let t1 = self.inner.grid()[index + 1];
-        let func = |t| self.inner.integrated_speed(index, t0, t) - s;
+        s -= self.grid[idx];
+        let t0 = self.inner.grid()[idx];
+        let t1 = self.inner.grid()[idx + 1];
+        let func = |t| self.inner.integrated_speed(idx, t0, t) - s;
         bisect(func, t0, t1, accuracy, 50)
     }
 }

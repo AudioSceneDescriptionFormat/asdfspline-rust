@@ -37,6 +37,7 @@ use std::fmt::Debug;
 use std::ops::{Add, Div, DivAssign, Mul, Sub};
 
 use num_traits::{Float, FromPrimitive, NumAssign};
+use superslice::Ext; // for slice::upper_bound_by()
 
 pub mod adapters;
 pub mod asdfspline;
@@ -86,7 +87,26 @@ where
     S: Scalar,
 {
     fn evaluate(&self, t: S) -> Output;
+
     fn grid(&self) -> &[S];
+
+    /// There must be at least two grid values!
+    /// This doesn't work if there are NaNs
+    fn clamp_parameter_and_find_index(&self, t: S) -> (S, usize) {
+        let first = *self.grid().first().unwrap();
+        let last = *self.grid().last().unwrap();
+        if t < first {
+            (first, 0)
+        } else if t < last {
+            (
+                t,
+                // NB: This doesn't work if a value is NaN
+                self.grid().upper_bound_by(|x| x.partial_cmp(&t).unwrap()) - 1,
+            )
+        } else {
+            (last, self.grid().len() - 2)
+        }
+    }
 }
 
 /// To work around Rust's orphan rules, see https://blog.mgattozzi.dev/orphan-rules/

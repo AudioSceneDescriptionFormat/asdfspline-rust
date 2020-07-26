@@ -1,5 +1,4 @@
 use num_traits::one;
-use superslice::Ext; // for slice::upper_bound_by()
 
 use crate::utilities::{check_grid, GridError};
 use crate::{Scalar, Spline, SplineWithVelocity, Vector};
@@ -57,21 +56,8 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
     }
 
     // If t is out of bounds, it is trimmed to the smallest/largest possible value
-    fn get_segment(&self, mut t: S) -> (S, S, S, &[V; 4]) {
-        let first = *self.grid.first().unwrap();
-        let last = *self.grid.last().unwrap();
-        let idx = if t < first {
-            t = first;
-            0
-        } else if t < last {
-            // NB: This doesn't work if a value is NaN (but we've checked for that in new())
-            self.grid.upper_bound_by(|x| x.partial_cmp(&t).unwrap()) - 1
-        } else if t == last {
-            self.grid.len() - 2
-        } else {
-            t = last;
-            self.segments.len() - 1
-        };
+    fn get_segment(&self, t: S) -> (S, S, S, &[V; 4]) {
+        let (t, idx) = self.clamp_parameter_and_find_index(t);
         (t, self.grid[idx], self.grid[idx + 1], &self.segments[idx])
     }
 }
