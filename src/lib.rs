@@ -40,7 +40,7 @@ use num_traits::{Float, FromPrimitive, NumAssign};
 use superslice::Ext; // for slice::upper_bound_by()
 
 pub mod adapters;
-pub mod asdfspline;
+pub mod asdfposspline;
 pub mod centripetalkochanekbartelsspline;
 pub mod cubichermitespline;
 pub mod monotonecubicspline;
@@ -49,7 +49,7 @@ pub mod quaternion;
 pub mod shapepreservingcubicspline;
 pub mod utilities;
 
-pub use crate::asdfspline::AsdfPosSpline;
+pub use crate::asdfposspline::AsdfPosSpline;
 pub use crate::monotonecubicspline::MonotoneCubicSpline;
 pub use crate::piecewisecubiccurve::PiecewiseCubicCurve;
 
