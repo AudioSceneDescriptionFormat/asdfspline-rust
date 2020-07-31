@@ -76,18 +76,29 @@ impl From<crate::centripetalkochanekbartelsspline::Error> for Error {
     }
 }
 
+impl From<crate::adapters::NewGridError> for Error {
+    fn from(err: crate::adapters::NewGridError) -> Self {
+        use crate::adapters::NewGridError as Other;
+        use Error::*;
+        match err {
+            Other::FirstTimeMissing => FirstTimeMissing,
+            Other::LastTimeMissing => LastTimeMissing,
+            Other::DuplicateValueWithoutTime { index } => DuplicatePositionWithoutTime { index },
+            Other::TimeNan { index } => TimeNan { index },
+            // TODO: fix index?
+            Other::GridNotAscending { index } => TimesNotAscending { index },
+            Other::NewGridVsOldGrid { .. } => unreachable!(),
+        }
+    }
+}
+
 impl From<crate::adapters::NewGridWithSpeedsError> for Error {
     fn from(err: crate::adapters::NewGridWithSpeedsError) -> Self {
         use crate::adapters::NewGridWithSpeedsError as Other;
         use Error::*;
         match err {
-            Other::FirstTimeMissing => FirstTimeMissing,
-            Other::LastTimeMissing => LastTimeMissing,
+            Other::FromNewGridError(e) => e.into(),
             Other::SpeedWithoutTime { index } => SpeedWithoutTime { index },
-            Other::DuplicatePositionWithoutTime { index } => DuplicatePositionWithoutTime { index },
-            Other::TimeNan { index } => TimeNan { index },
-            // TODO: fix index?
-            Other::GridNotAscending { index } => TimesNotAscending { index },
             // TODO: fix index?
             Other::TooFast {
                 index,
@@ -100,6 +111,7 @@ impl From<crate::adapters::NewGridWithSpeedsError> for Error {
             },
             // TODO: fix index?
             Other::NegativeSpeed { index, speed } => NegativeSpeed { index, speed },
+            Other::TimesVsSpeeds { .. } => unreachable!(),
         }
     }
 }
@@ -132,7 +144,12 @@ where
                 positions: positions.len(),
             });
         }
-        let path = PiecewiseCubicCurve::new_centripetal_kochanek_bartels(positions, tcb, closed)?;
+        let path = PiecewiseCubicCurve::new_centripetal_kochanek_bartels(
+            positions,
+            tcb,
+            closed,
+            NormWrapper::norm,
+        )?;
         let constant_speed = ConstantSpeedAdapter::adapt(path);
         Ok(NewGridAdapter::adapt_with_speeds(
             constant_speed,

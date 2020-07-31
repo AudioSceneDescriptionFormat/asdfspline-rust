@@ -39,6 +39,7 @@ use superslice::Ext; // for slice::upper_bound_by()
 
 pub mod adapters;
 pub mod asdfposspline;
+pub mod asdfrotspline;
 pub mod centripetalkochanekbartelsspline;
 pub mod cubichermitespline;
 pub mod monotonecubicspline;
@@ -48,6 +49,7 @@ pub mod shapepreservingcubicspline;
 pub mod utilities;
 
 pub use crate::asdfposspline::AsdfPosSpline;
+pub use crate::asdfrotspline::AsdfRotSpline;
 pub use crate::monotonecubicspline::MonotoneCubicSpline;
 pub use crate::piecewisecubiccurve::PiecewiseCubicCurve;
 

@@ -85,19 +85,37 @@ where
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum NewGridWithSpeedsError {
+pub enum NewGridError {
+    #[error("length of new grid ({new}) must be same as old grid ({old})")]
+    NewGridVsOldGrid { new: usize, old: usize },
     #[error("first time value must be specified")]
     FirstTimeMissing,
     #[error("last time value must be specified")]
     LastTimeMissing,
-    #[error("index {index}: speed is only allowed if time is given")]
-    SpeedWithoutTime { index: usize },
-    #[error("index {index}: duplicate position without time")]
-    DuplicatePositionWithoutTime { index: usize },
+    #[error("index {index}: duplicate value without time")]
+    DuplicateValueWithoutTime { index: usize },
     #[error("index {index}: time values are not allowed to be NaN")]
     TimeNan { index: usize },
     #[error("index {index}: grid values must be strictly ascending")]
     GridNotAscending { index: usize },
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum NewGridWithSpeedsError {
+    #[error(transparent)]
+    FromNewGridError(#[from] NewGridError),
+    #[error("number of times ({times}) must be {} speeds ({speeds})", if *.closed {
+        "one more than"
+    } else {
+        "the same as"
+    })]
+    TimesVsSpeeds {
+        times: usize,
+        speeds: usize,
+        closed: bool,
+    },
+    #[error("index {index}: speed is only allowed if time is given")]
+    SpeedWithoutTime { index: usize },
     #[error("speed at index {index} too fast ({speed:?}; maximum: {maximum:?})")]
     TooFast {
         index: usize,
@@ -112,15 +130,42 @@ impl<Value, Inner> NewGridAdapter<Value, Inner>
 where
     Inner: Spline<Value>,
 {
-    pub fn adapt_with_speeds(
+    pub fn adapt(
         inner: Inner,
         times: &[Option<f32>],
-        speeds: &[Option<f32>],
+        closed: bool,
+    ) -> Result<NewGridAdapter<Value, Inner>, NewGridError> {
+        let speeds = vec![None; inner.grid().len() - closed as usize];
+        Self::adapt_with_speeds(inner, times, speeds, closed).map_err(|e| match e {
+            NewGridWithSpeedsError::FromNewGridError(e) => e,
+            _ => unreachable!(),
+        })
+    }
+
+    pub fn adapt_with_speeds(
+        inner: Inner,
+        times: impl AsRef<[Option<f32>]>,
+        speeds: impl AsRef<[Option<f32>]>,
         closed: bool,
     ) -> Result<NewGridAdapter<Value, Inner>, NewGridWithSpeedsError> {
+        use NewGridError::*;
         use NewGridWithSpeedsError::*;
-
-        // TODO: check length of times and speeds, compare with inner.grid, check "closed"
+        let times = times.as_ref();
+        let speeds = speeds.as_ref();
+        if times.len() != inner.grid().len() {
+            return Err(NewGridVsOldGrid {
+                new: times.len(),
+                old: inner.grid().len(),
+            }
+            .into());
+        }
+        if times.len() != speeds.len() + closed as usize {
+            return Err(TimesVsSpeeds {
+                times: times.len(),
+                speeds: speeds.len(),
+                closed,
+            });
+        }
 
         let mut t2u_times = Vec::new();
         let mut t2u_speeds = Vec::new();
@@ -128,7 +173,7 @@ where
         if let Some(time) = times[0] {
             t2u_times.push(time);
         } else {
-            return Err(FirstTimeMissing);
+            return Err(FirstTimeMissing.into());
         }
         t2u_speeds.push(speeds[0]);
         for i in 1..speeds.len() {
@@ -144,14 +189,13 @@ where
         }
         if let Some(last_time) = *times.last().unwrap() {
             if closed {
-                assert!(speeds.len() + 1 == times.len());
                 t2u_times.push(last_time);
                 t2u_speeds.push(speeds[0]);
             } else {
                 // The last values have already been pushed in the for-loop above.
             }
         } else {
-            return Err(LastTimeMissing);
+            return Err(LastTimeMissing.into());
         }
 
         let mut u_grid = Vec::new();
@@ -174,9 +218,9 @@ where
                     Other::GridVsValues { .. } => unreachable!(),
                     Other::Decreasing => unreachable!(),
                     // TODO: fix index? consider missing times? optional speeds?
-                    Other::GridNan { index } => TimeNan { index },
+                    Other::GridNan { index } => TimeNan { index }.into(),
                     // TODO: fix index?
-                    Other::GridNotAscending { index } => GridNotAscending { index },
+                    Other::GridNotAscending { index } => GridNotAscending { index }.into(),
                     // TODO: fix index?
                     Other::SlopeTooSteep {
                         index,
@@ -199,7 +243,7 @@ where
             if let Some(time) = t2u.get_time(u_missing[i]) {
                 grid.insert(missing_times[i], time);
             } else {
-                return Err(DuplicatePositionWithoutTime { index: i });
+                return Err(DuplicateValueWithoutTime { index: i }.into());
             }
         }
         let t2u = t2u.into_inner();
