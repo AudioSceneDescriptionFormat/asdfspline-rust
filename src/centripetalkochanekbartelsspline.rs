@@ -1,6 +1,6 @@
-use num_traits::{one, pow, zero};
+use num_traits::pow;
 
-use crate::{NormWrapper, PiecewiseCubicCurve, Scalar, Vector};
+use crate::{NormWrapper, PiecewiseCubicCurve, Vector};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -20,14 +20,14 @@ pub enum Error {
     RepeatedPosition { index: usize },
 }
 
-impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
+impl<V: Vector> PiecewiseCubicCurve<V> {
     pub fn new_centripetal_kochanek_bartels<U>(
         positions: &[V],
-        tcb: &[[S; 3]],
+        tcb: &[[f32; 3]],
         closed: bool,
-    ) -> Result<PiecewiseCubicCurve<S, V>, Error>
+    ) -> Result<PiecewiseCubicCurve<V>, Error>
     where
-        V: NormWrapper<U, Norm = S>,
+        V: NormWrapper<U>,
     {
         use Error::*;
         let positions_len = positions.len();
@@ -58,13 +58,13 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
 
         // Create grid with centripetal parametrization
 
-        let mut grid = Vec::<S>::with_capacity(positions.len());
-        grid.push(zero());
+        let mut grid = Vec::with_capacity(positions.len());
+        grid.push(0.0);
         for i in 0..positions.len() - 1 {
             let x0 = positions[i];
             let x1 = positions[i + 1];
             let delta = (x1 - x0).norm().sqrt();
-            if delta == zero() {
+            if delta == 0.0 {
                 return Err(RepeatedPosition { index: i + 1 });
             }
             grid.push(*grid.last().unwrap() + delta);
@@ -81,11 +81,10 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
             let t1 = grid[i + 2];
             #[allow(non_snake_case)]
             let [T, C, B] = tcb[(i + closed as usize) % tcb.len()];
-            let one = one::<S>();
-            let a = (one - T) * (one + C) * (one + B);
-            let b = (one - T) * (one - C) * (one - B);
-            let c = (one - T) * (one - C) * (one + B);
-            let d = (one - T) * (one + C) * (one - B);
+            let a = (1.0 - T) * (1.0 + C) * (1.0 + B);
+            let b = (1.0 - T) * (1.0 - C) * (1.0 - B);
+            let c = (1.0 - T) * (1.0 - C) * (1.0 + B);
+            let d = (1.0 - T) * (1.0 + C) * (1.0 - B);
 
             let incoming = ((x0 - x_1) * c * pow(t1 - t0, 2) + (x1 - x0) * d * pow(t0 - t_1, 2))
                 / ((t1 - t0) * (t0 - t_1) * (t1 - t_1));
@@ -116,14 +115,10 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
             // End conditions for non-closed curves
             assert!(tangents.len() >= 2);
 
-            let one: S = one();
-            let two = one + one;
-            let three = two + one;
-
             // "natural" end conditions
             let natural_end_tangent = |x0, x1, t0, t1, inner_tangent| {
                 let delta = t1 - t0;
-                (x1 * three - x0 * three - inner_tangent * delta) / (two * delta)
+                (x1 * 3.0 - x0 * 3.0 - inner_tangent * delta) / (2.0 * delta)
             };
 
             tangents.insert(
@@ -160,9 +155,7 @@ mod tests {
     struct NormF32;
 
     impl NormWrapper<NormF32> for f32 {
-        type Norm = f32;
-
-        fn norm(&self) -> Self::Norm {
+        fn norm(&self) -> f32 {
             self.abs()
         }
     }

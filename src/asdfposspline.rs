@@ -1,8 +1,8 @@
 use crate::adapters::{ConstantSpeedAdapter, NewGridAdapter};
-use crate::{NormWrapper, PiecewiseCubicCurve, Scalar, Vector};
+use crate::{NormWrapper, PiecewiseCubicCurve, Vector};
 
 #[derive(thiserror::Error, Debug)]
-pub enum Error<S: Scalar> {
+pub enum Error {
     #[error("there must be at least two positions")]
     LessThanTwoPositions,
     #[error("number of times ({times}) must be {} number of positions ({positions})", if *.closed {
@@ -43,12 +43,16 @@ pub enum Error<S: Scalar> {
     #[error("index {index}: time values must be strictly ascending")]
     TimesNotAscending { index: usize },
     #[error("speed at index {index} too fast ({speed:?}; maximum: {maximum:?})")]
-    TooFast { index: usize, speed: S, maximum: S },
+    TooFast {
+        index: usize,
+        speed: f32,
+        maximum: f32,
+    },
     #[error("negative speed ({speed:?}) at index {index}")]
-    NegativeSpeed { index: usize, speed: S },
+    NegativeSpeed { index: usize, speed: f32 },
 }
 
-impl<S: Scalar> From<crate::centripetalkochanekbartelsspline::Error> for Error<S> {
+impl From<crate::centripetalkochanekbartelsspline::Error> for Error {
     fn from(err: crate::centripetalkochanekbartelsspline::Error) -> Self {
         use crate::centripetalkochanekbartelsspline::Error as Other;
         use Error::*;
@@ -72,8 +76,8 @@ impl<S: Scalar> From<crate::centripetalkochanekbartelsspline::Error> for Error<S
     }
 }
 
-impl<S: Scalar> From<crate::adapters::NewGridWithSpeedsError<S>> for Error<S> {
-    fn from(err: crate::adapters::NewGridWithSpeedsError<S>) -> Self {
+impl From<crate::adapters::NewGridWithSpeedsError> for Error {
+    fn from(err: crate::adapters::NewGridWithSpeedsError) -> Self {
         use crate::adapters::NewGridWithSpeedsError as Other;
         use Error::*;
         match err {
@@ -100,21 +104,20 @@ impl<S: Scalar> From<crate::adapters::NewGridWithSpeedsError<S>> for Error<S> {
     }
 }
 
-pub type AsdfPosSpline<S, V, U> =
-    NewGridAdapter<S, V, ConstantSpeedAdapter<S, V, V, PiecewiseCubicCurve<S, V>, U>>;
+pub type AsdfPosSpline<V, U> =
+    NewGridAdapter<V, ConstantSpeedAdapter<V, V, PiecewiseCubicCurve<V>, U>>;
 
-impl<S, V, U> AsdfPosSpline<S, V, U>
+impl<V, U> AsdfPosSpline<V, U>
 where
-    S: Scalar,
-    V: Vector<S> + NormWrapper<U, Norm = S>,
+    V: Vector + NormWrapper<U>,
 {
     pub fn new(
         positions: &[V],
-        times: &[Option<S>],
-        speeds: &[Option<S>],
-        tcb: &[[S; 3]],
+        times: &[Option<f32>],
+        speeds: &[Option<f32>],
+        tcb: &[[f32; 3]],
         closed: bool,
-    ) -> Result<AsdfPosSpline<S, V, U>, Error<S>> {
+    ) -> Result<AsdfPosSpline<V, U>, Error> {
         use Error::*;
         if positions.len() + closed as usize != times.len() {
             return Err(TimesVsPositions {
@@ -150,14 +153,12 @@ mod tests {
     struct NormF32;
 
     impl NormWrapper<NormF32> for f32 {
-        type Norm = f32;
-
-        fn norm(&self) -> Self::Norm {
+        fn norm(&self) -> f32 {
             self.abs()
         }
     }
 
-    type AsdfPosSpline1 = AsdfPosSpline<f32, f32, NormF32>;
+    type AsdfPosSpline1 = AsdfPosSpline<f32, NormF32>;
 
     #[test]
     fn simple_linear() {

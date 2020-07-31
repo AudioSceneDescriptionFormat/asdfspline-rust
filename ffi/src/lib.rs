@@ -48,9 +48,7 @@ pub type Vec3 = glm::TVec3<f32>;
 struct Norm2;
 
 impl NormWrapper<Norm2> for Vec2 {
-    type Norm = f32;
-
-    fn norm(&self) -> Self::Norm {
+    fn norm(&self) -> f32 {
         self.norm()
     }
 }
@@ -58,19 +56,17 @@ impl NormWrapper<Norm2> for Vec2 {
 pub struct Norm3;
 
 impl NormWrapper<Norm3> for Vec3 {
-    type Norm = f32;
-
-    fn norm(&self) -> Self::Norm {
+    fn norm(&self) -> f32 {
         self.norm()
     }
 }
 
 /// A (three-dimensional) ASDF spline.
-pub type AsdfPosSpline3 = AsdfPosSpline<f32, Vec3, Norm3>;
-pub type AsdfCubicCurve3 = PiecewiseCubicCurve<f32, Vec3>;
-pub type AsdfCubicCurve2 = PiecewiseCubicCurve<f32, Vec2>;
-pub type AsdfCubicCurve1 = PiecewiseCubicCurve<f32, f32>;
-pub type AsdfMonotoneCubic = MonotoneCubicSpline<f32>;
+pub type AsdfPosSpline3 = AsdfPosSpline<Vec3, Norm3>;
+pub type AsdfCubicCurve3 = PiecewiseCubicCurve<Vec3>;
+pub type AsdfCubicCurve2 = PiecewiseCubicCurve<Vec2>;
+pub type AsdfCubicCurve1 = PiecewiseCubicCurve<f32>;
+pub type AsdfMonotoneCubic = MonotoneCubicSpline;
 
 /// Creates an `AsdfPosSpline3`.
 ///

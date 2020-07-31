@@ -1,12 +1,9 @@
-use num_traits::{one, zero};
-
 use crate::utilities::{check_grid, GridError};
 use crate::PiecewiseCubicCurve;
-use crate::Scalar;
 
 // TODO: Two error types? One doesn't need "slopes" errors.
 #[derive(thiserror::Error, Debug)]
-pub enum Error<S: Scalar> {
+pub enum Error {
     #[error("there must be at least two values")]
     LessThanTwoValues,
     #[error("length of grid ({grid}) must be {} number of values ({values})", if *.closed {
@@ -26,13 +23,17 @@ pub enum Error<S: Scalar> {
     #[error("number of slopes ({slopes}) must be same as number of values ({values})")]
     SlopesVsValues { slopes: usize, values: usize },
     #[error("slope at index {index} too steep ({slope:?}; maximum: {maximum:?})")]
-    SlopeTooSteep { index: usize, slope: S, maximum: S },
+    SlopeTooSteep {
+        index: usize,
+        slope: f32,
+        maximum: f32,
+    },
     #[error("slope at index {index} has wrong sign ({slope:?})")]
-    SlopeWrongSign { index: usize, slope: S },
+    SlopeWrongSign { index: usize, slope: f32 },
 }
 
-impl<S: Scalar> From<GridError> for Error<S> {
-    fn from(e: GridError) -> Error<S> {
+impl From<GridError> for Error {
+    fn from(e: GridError) -> Error {
         use Error::*;
         match e {
             GridError::GridNan { index } => GridNan { index },
@@ -41,25 +42,25 @@ impl<S: Scalar> From<GridError> for Error<S> {
     }
 }
 
-impl<S: Scalar> PiecewiseCubicCurve<S, S> {
+impl PiecewiseCubicCurve<f32> {
     pub fn new_shape_preserving(
-        values: impl Into<Vec<S>>,
-        grid: impl Into<Vec<S>>,
+        values: impl Into<Vec<f32>>,
+        grid: impl Into<Vec<f32>>,
         closed: bool,
-    ) -> Result<PiecewiseCubicCurve<S, S>, Error<S>> {
+    ) -> Result<PiecewiseCubicCurve<f32>, Error> {
         let values = values.into();
         let slopes = vec![None; values.len()];
         PiecewiseCubicCurve::new_shape_preserving_with_slopes(values, slopes, grid, closed)
     }
 }
 
-impl<S: Scalar> PiecewiseCubicCurve<S, S> {
+impl PiecewiseCubicCurve<f32> {
     pub fn new_shape_preserving_with_slopes(
-        values: impl Into<Vec<S>>,
-        optional_slopes: impl AsRef<[Option<S>]>,
-        grid: impl Into<Vec<S>>,
+        values: impl Into<Vec<f32>>,
+        optional_slopes: impl AsRef<[Option<f32>]>,
+        grid: impl Into<Vec<f32>>,
         closed: bool,
-    ) -> Result<PiecewiseCubicCurve<S, S>, Error<S>> {
+    ) -> Result<PiecewiseCubicCurve<f32>, Error> {
         use Error::*;
         let mut values = values.into();
         let optional_slopes = optional_slopes.as_ref();
@@ -90,8 +91,7 @@ impl<S: Scalar> PiecewiseCubicCurve<S, S> {
             values.push(values[1]);
             grid.push(*grid.last().unwrap() + grid[1] - grid[0]);
         }
-        let mut slopes = Vec::<S>::new();
-        let two = one::<S>() + one();
+        let mut slopes = Vec::new();
         for i in 0..values.len() - 2 {
             let x_1 = values[i];
             let x0 = values[i + 1];
@@ -104,7 +104,7 @@ impl<S: Scalar> PiecewiseCubicCurve<S, S> {
             let slope = match optional_slopes[(i + 1) % optional_slopes.len()] {
                 Some(slope) => verify_slope(slope, left, right, i + 1)?,
                 None => fix_slope(
-                    ((x0 - x_1) / (t0 - t_1) + (x1 - x0) / (t1 - t0)) / two,
+                    ((x0 - x_1) / (t0 - t_1) + (x1 - x0) / (t1 - t0)) / 2.0,
                     left,
                     right,
                 ),
@@ -154,12 +154,12 @@ impl<S: Scalar> PiecewiseCubicCurve<S, S> {
     }
 }
 
-fn calculate_slope<S: Scalar>(
-    main: &Option<S>,
-    other: &Option<S>,
-    chord: S,
+fn calculate_slope(
+    main: &Option<f32>,
+    other: &Option<f32>,
+    chord: f32,
     index: usize,
-) -> Result<S, Error<S>> {
+) -> Result<f32, Error> {
     if let Some(main) = main {
         Ok(verify_slope(*main, chord, chord, index)?)
     } else if let Some(other) = other {
@@ -169,18 +169,19 @@ fn calculate_slope<S: Scalar>(
     }
 }
 
-fn verify_slope<S: Scalar>(slope: S, left: S, right: S, index: usize) -> Result<S, Error<S>> {
+fn verify_slope(slope: f32, left: f32, right: f32, index: usize) -> Result<f32, Error> {
     let fixed_slope = fix_slope(slope, left, right);
+    #[allow(clippy::float_cmp)]
     if fixed_slope == slope {
         Ok(slope)
-    } else if left * right < zero() {
-        assert!(fixed_slope == zero());
+    } else if left * right < 0.0 {
+        assert!(fixed_slope == 0.0);
         Err(Error::SlopeTooSteep {
             index,
             slope,
-            maximum: zero(),
+            maximum: 0.0,
         })
-    } else if left * slope < zero() {
+    } else if left * slope < 0.0 {
         Err(Error::SlopeWrongSign { index, slope })
     } else {
         Err(Error::SlopeTooSteep {
@@ -193,15 +194,13 @@ fn verify_slope<S: Scalar>(slope: S, left: S, right: S, index: usize) -> Result<
 
 /// Manipulate the slope to preserve shape.
 /// See Dougherty et al. (1989), eq. (4.2).
-fn fix_slope<S: Scalar>(slope: S, left: S, right: S) -> S {
-    let zero = zero();
-    let three = one::<S>() + one() + one();
-    if left * right <= zero {
-        zero
-    } else if right > zero {
-        zero.max(slope).min(three * left.abs().min(right.abs()))
+fn fix_slope(slope: f32, left: f32, right: f32) -> f32 {
+    if left * right <= 0.0 {
+        0.0
+    } else if right > 0.0 {
+        slope.max(0.0).min(3.0 * left.abs().min(right.abs()))
     } else {
-        zero.min(slope).max(-three * left.abs().min(right.abs()))
+        slope.min(0.0).max(-3.0 * left.abs().min(right.abs()))
     }
 }
 
@@ -209,18 +208,15 @@ fn fix_slope<S: Scalar>(slope: S, left: S, right: S) -> S {
 /// within the first/last curve segment.  Especially, this should avoid a
 /// change from negative to positive acceleration (and vice versa).
 /// There might be a better method available!?!
-fn end_slope<S: Scalar>(inner_slope: S, chord_slope: S) -> S {
-    let zero = zero();
-    let two = one::<S>() + one();
-    let three = two + one();
-    if chord_slope < zero {
+fn end_slope(inner_slope: f32, chord_slope: f32) -> f32 {
+    if chord_slope < 0.0 {
         return -end_slope(-inner_slope, -chord_slope);
     }
-    assert!(zero <= inner_slope);
-    assert!(inner_slope <= three * chord_slope);
+    assert!(0.0 <= inner_slope);
+    assert!(inner_slope <= 3.0 * chord_slope);
     if inner_slope <= chord_slope {
-        three * chord_slope - two * inner_slope
+        3.0 * chord_slope - 2.0 * inner_slope
     } else {
-        (three * chord_slope - inner_slope) / two
+        (3.0 * chord_slope - inner_slope) / 2.0
     }
 }

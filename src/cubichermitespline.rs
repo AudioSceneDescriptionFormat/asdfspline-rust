@@ -1,7 +1,5 @@
-use num_traits::one;
-
 use crate::PiecewiseCubicCurve;
-use crate::{Scalar, Vector};
+use crate::Vector;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -20,12 +18,12 @@ pub enum Error {
     GridNotAscending { index: usize },
 }
 
-impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
+impl<V: Vector> PiecewiseCubicCurve<V> {
     pub fn new_hermite(
         positions: &[V],
         tangents: &[V],
-        grid: &[S],
-    ) -> Result<PiecewiseCubicCurve<S, V>, Error> {
+        grid: &[f32],
+    ) -> Result<PiecewiseCubicCurve<V>, Error> {
         use Error::*;
         if positions.len() < 2 {
             return Err(LessThanTwoPositions);
@@ -52,9 +50,6 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
             let t0 = grid[i];
             let t1 = grid[i + 1];
             let delta = t1 - t0;
-            let one: S = one();
-            let two = one + one;
-            let three = two + one;
 
             // [a0]   [ 1,  0,          0,      0] [x0]
             // [a1] = [ 0,  0,      delta,      0] [x1]
@@ -64,8 +59,8 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
             segments.push([
                 x0,
                 v0 * delta,
-                x0 * -three + x1 * three - v0 * two * delta - v1 * delta,
-                x0 * two - x1 * two + v0 * delta + v1 * delta,
+                x0 * -3.0 + x1 * 3.0 - v0 * 2.0 * delta - v1 * delta,
+                x0 * 2.0 - x1 * 2.0 + v0 * delta + v1 * delta,
             ]);
         }
         use crate::piecewisecubiccurve::Error as Other;

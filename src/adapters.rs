@@ -1,35 +1,30 @@
 use std::marker::PhantomData;
 
-use num_traits::zero;
-
 use crate::utilities::bisect;
 use crate::{
-    MonotoneCubicSpline, NormWrapper, PiecewiseCubicCurve, Scalar, Spline, SplineWithVelocity,
-    Vector,
+    MonotoneCubicSpline, NormWrapper, PiecewiseCubicCurve, Spline, SplineWithVelocity, Vector,
 };
 
-pub struct ConstantSpeedAdapter<S, Output, Velocity, Inner, U>
+pub struct ConstantSpeedAdapter<Value, Velocity, Inner, U>
 where
-    S: Scalar,
-    Velocity: Vector<S> + NormWrapper<U, Norm = S>,
-    Inner: SplineWithVelocity<S, Output, Velocity>,
+    Velocity: Vector + NormWrapper<U>,
+    Inner: SplineWithVelocity<Value, Velocity>,
 {
     inner: Inner,
-    grid: Box<[S]>,
-    _phantom_output: PhantomData<Output>,
+    grid: Box<[f32]>,
+    _phantom_output: PhantomData<Value>,
     _phantom_velocity: PhantomData<Velocity>,
     _phantom_dummy: PhantomData<U>,
 }
 
-impl<S, Output, Velocity, Inner, U> ConstantSpeedAdapter<S, Output, Velocity, Inner, U>
+impl<Value, Velocity, Inner, U> ConstantSpeedAdapter<Value, Velocity, Inner, U>
 where
-    S: Scalar,
-    Velocity: Vector<S> + NormWrapper<U, Norm = S>,
-    Inner: SplineWithVelocity<S, Output, Velocity>,
+    Velocity: Vector + NormWrapper<U>,
+    Inner: SplineWithVelocity<Value, Velocity>,
 {
-    pub fn adapt(inner: Inner) -> ConstantSpeedAdapter<S, Output, Velocity, Inner, U> {
+    pub fn adapt(inner: Inner) -> ConstantSpeedAdapter<Value, Velocity, Inner, U> {
         let mut grid = Vec::with_capacity(inner.grid().len());
-        grid.push(zero());
+        grid.push(0.0);
         let grid = inner
             .grid()
             .windows(2)
@@ -52,11 +47,9 @@ where
     }
 
     /// If s is outside, return clipped t.
-    /// This is only supposed to be used with `f32`.
-    fn s2t(&self, s: S) -> S {
+    fn s2t(&self, s: f32) -> f32 {
         // TODO: proper accuracy (a bit less than single-precision?)
-        // TODO: a separate version for f64?
-        let accuracy = S::from_f32(0.0001).unwrap();
+        let accuracy = 0.0001;
         let (s, idx) = self.clamp_parameter_and_find_index(s);
         let mut s = s;
         s -= self.grid[idx];
@@ -67,35 +60,32 @@ where
     }
 }
 
-impl<S, Output, Velocity, Inner, U> Spline<S, Output>
-    for ConstantSpeedAdapter<S, Output, Velocity, Inner, U>
+impl<Value, Velocity, Inner, U> Spline<Value> for ConstantSpeedAdapter<Value, Velocity, Inner, U>
 where
-    S: Scalar,
-    Velocity: Vector<S> + NormWrapper<U, Norm = S>,
-    Inner: SplineWithVelocity<S, Output, Velocity>,
+    Velocity: Vector + NormWrapper<U>,
+    Inner: SplineWithVelocity<Value, Velocity>,
 {
-    fn evaluate(&self, s: S) -> Output {
+    fn evaluate(&self, s: f32) -> Value {
         self.inner.evaluate(self.s2t(s))
     }
 
-    fn grid(&self) -> &[S] {
+    fn grid(&self) -> &[f32] {
         &self.grid
     }
 }
 
-pub struct NewGridAdapter<S, Output, Inner>
+pub struct NewGridAdapter<Value, Inner>
 where
-    S: Scalar,
-    Inner: Spline<S, Output>,
+    Inner: Spline<Value>,
 {
     inner: Inner,
-    grid: Box<[S]>,
-    t2u: PiecewiseCubicCurve<S, S>, // Created via MonotoneCubicSpline
-    _phantom_output: PhantomData<Output>,
+    grid: Box<[f32]>,
+    t2u: PiecewiseCubicCurve<f32>, // Created via MonotoneCubicSpline
+    _phantom_output: PhantomData<Value>,
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum NewGridWithSpeedsError<S: Scalar> {
+pub enum NewGridWithSpeedsError {
     #[error("first time value must be specified")]
     FirstTimeMissing,
     #[error("last time value must be specified")]
@@ -109,22 +99,25 @@ pub enum NewGridWithSpeedsError<S: Scalar> {
     #[error("index {index}: grid values must be strictly ascending")]
     GridNotAscending { index: usize },
     #[error("speed at index {index} too fast ({speed:?}; maximum: {maximum:?})")]
-    TooFast { index: usize, speed: S, maximum: S },
+    TooFast {
+        index: usize,
+        speed: f32,
+        maximum: f32,
+    },
     #[error("negative speed ({speed:?}) at index {index}")]
-    NegativeSpeed { index: usize, speed: S },
+    NegativeSpeed { index: usize, speed: f32 },
 }
 
-impl<S, Output, Inner> NewGridAdapter<S, Output, Inner>
+impl<Value, Inner> NewGridAdapter<Value, Inner>
 where
-    S: Scalar,
-    Inner: Spline<S, Output>,
+    Inner: Spline<Value>,
 {
     pub fn adapt_with_speeds(
         inner: Inner,
-        times: &[Option<S>],
-        speeds: &[Option<S>],
+        times: &[Option<f32>],
+        speeds: &[Option<f32>],
         closed: bool,
-    ) -> Result<NewGridAdapter<S, Output, Inner>, NewGridWithSpeedsError<S>> {
+    ) -> Result<NewGridAdapter<Value, Inner>, NewGridWithSpeedsError> {
         use NewGridWithSpeedsError::*;
 
         // TODO: check length of times and speeds, compare with inner.grid, check "closed"
@@ -161,8 +154,8 @@ where
             return Err(LastTimeMissing);
         }
 
-        let mut u_grid = Vec::<S>::new();
-        let mut u_missing = Vec::<S>::new();
+        let mut u_grid = Vec::new();
+        let mut u_missing = Vec::new();
         for (i, &u) in inner.grid().iter().enumerate() {
             if missing_times.iter().any(|&x| x == i) {
                 u_missing.push(u);
@@ -223,38 +216,15 @@ where
     }
 }
 
-impl<S, Output, Inner> Spline<S, Output> for NewGridAdapter<S, Output, Inner>
+impl<Value, Inner> Spline<Value> for NewGridAdapter<Value, Inner>
 where
-    S: Scalar,
-    Inner: Spline<S, Output>,
+    Inner: Spline<Value>,
 {
-    fn evaluate(&self, t: S) -> Output {
+    fn evaluate(&self, t: f32) -> Value {
         self.inner.evaluate(self.t2u.evaluate(t))
     }
 
-    fn grid(&self) -> &[S] {
+    fn grid(&self) -> &[f32] {
         &self.grid
     }
 }
-
-// TODO: implement SplineWithVelocity?
-/*
-pub fn evaluate_velocity<F>(&self, t: S, get_length: F) -> V
-where
-    F: Fn(V) -> S,
-{
-    let speed = self.t2s.evaluate_velocity(t);
-    let mut tangent = self
-        .path
-        .evaluate_velocity(self.s2u(self.t2s.evaluate(t), &get_length));
-    let tangent_length = get_length(tangent);
-    if tangent_length != zero() {
-        tangent /= tangent_length;
-    }
-    tangent * speed
-}
-
-pub fn grid(&self) -> &[S] {
-    &self.grid
-}
-*/

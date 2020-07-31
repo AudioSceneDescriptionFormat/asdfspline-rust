@@ -81,7 +81,7 @@ impl CubicDeCasteljau {
     }
 }
 
-impl Spline<f32, UnitQuaternion> for CubicDeCasteljau {
+impl Spline<UnitQuaternion> for CubicDeCasteljau {
     fn evaluate(&self, t: f32) -> UnitQuaternion {
         let (one, two, t, _) = self.partial_de_casteljau(t);
         one.slerp(&two, t)
@@ -92,7 +92,7 @@ impl Spline<f32, UnitQuaternion> for CubicDeCasteljau {
     }
 }
 
-impl SplineWithVelocity<f32, UnitQuaternion, Vec3> for CubicDeCasteljau {
+impl SplineWithVelocity<UnitQuaternion, Vec3> for CubicDeCasteljau {
     fn evaluate_velocity(&self, t: f32) -> Vec3 {
         let (one, two, _, delta_t) = self.partial_de_casteljau(t);
         const DEGREE: f32 = 3.0; // cubic

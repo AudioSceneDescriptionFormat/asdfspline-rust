@@ -33,10 +33,8 @@ Using [cargo-readme](https://github.com/livioribeiro/cargo-readme) (`cargo insta
 cargo readme -o README.md
 ```
 */
-use std::fmt::Debug;
 use std::ops::{Add, Div, DivAssign, Mul, Sub};
 
-use num_traits::{Float, FromPrimitive, NumAssign};
 use superslice::Ext; // for slice::upper_bound_by()
 
 pub mod adapters;
@@ -55,45 +53,34 @@ pub use crate::piecewisecubiccurve::PiecewiseCubicCurve;
 
 use crate::utilities::gauss_legendre13;
 
-/// A trait that is automatically implemented for all types that can be used as scalars,
-/// e.g. time values.
-pub trait Scalar: 'static + Float + NumAssign + FromPrimitive + Debug {}
-
-impl<T: 'static + Float + NumAssign + FromPrimitive + Debug> Scalar for T {}
-
 /// A trait that is automatically implemented for all types that can be used as positions,
 /// polynomial coefficients, tangent vectors etc.
-pub trait Vector<S>
+pub trait Vector
 where
-    S: Scalar,
     Self: Copy,
     Self: Add<Output = Self> + Sub<Output = Self>,
-    Self: Mul<S, Output = Self> + Div<S, Output = Self>,
-    Self: DivAssign<S>,
+    Self: Mul<f32, Output = Self> + Div<f32, Output = Self>,
+    Self: DivAssign<f32>,
 {
 }
 
-impl<S, T> Vector<S> for T
+impl<T> Vector for T
 where
-    S: Scalar,
     Self: Copy,
     Self: Add<Output = Self> + Sub<Output = Self>,
-    Self: Mul<S, Output = Self> + Div<S, Output = Self>,
-    Self: DivAssign<S>,
+    Self: Mul<f32, Output = Self> + Div<f32, Output = Self>,
+    Self: DivAssign<f32>,
 {
 }
 
-pub trait Spline<S, Output>
-where
-    S: Scalar,
-{
-    fn evaluate(&self, t: S) -> Output;
+pub trait Spline<Value> {
+    fn evaluate(&self, t: f32) -> Value;
 
-    fn grid(&self) -> &[S];
+    fn grid(&self) -> &[f32];
 
     /// There must be at least two grid values!
     /// This doesn't work if there are NaNs
-    fn clamp_parameter_and_find_index(&self, t: S) -> (S, usize) {
+    fn clamp_parameter_and_find_index(&self, t: f32) -> (f32, usize) {
         let first = *self.grid().first().unwrap();
         let last = *self.grid().last().unwrap();
         if t < first {
@@ -112,20 +99,18 @@ where
 
 /// To work around Rust's orphan rules, see https://blog.mgattozzi.dev/orphan-rules/
 pub trait NormWrapper<U> {
-    type Norm;
-    fn norm(&self) -> Self::Norm;
+    fn norm(&self) -> f32;
 }
 
-pub trait SplineWithVelocity<S, Output, Velocity>: Spline<S, Output>
+pub trait SplineWithVelocity<Value, Velocity>: Spline<Value>
 where
-    S: Scalar,
-    Velocity: Vector<S>,
+    Velocity: Vector,
 {
-    fn evaluate_velocity(&self, t: S) -> Velocity;
+    fn evaluate_velocity(&self, t: f32) -> Velocity;
 
-    fn integrated_speed<U>(&self, index: usize, a: S, b: S) -> S
+    fn integrated_speed<U>(&self, index: usize, a: f32, b: f32) -> f32
     where
-        Velocity: NormWrapper<U, Norm = S>,
+        Velocity: NormWrapper<U>,
     {
         assert!(a <= b);
         assert!(self.grid()[index] <= a);

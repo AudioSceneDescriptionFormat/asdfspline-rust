@@ -1,11 +1,9 @@
-use num_traits::one;
-
 use crate::utilities::{check_grid, GridError};
-use crate::{Scalar, Spline, SplineWithVelocity, Vector};
+use crate::{Spline, SplineWithVelocity, Vector};
 
-pub struct PiecewiseCubicCurve<S, V> {
+pub struct PiecewiseCubicCurve<V> {
     segments: Box<[[V; 4]]>,
-    grid: Box<[S]>,
+    grid: Box<[f32]>,
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -30,11 +28,11 @@ impl From<GridError> for Error {
     }
 }
 
-impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
+impl<V: Vector> PiecewiseCubicCurve<V> {
     pub fn new(
         segments: impl Into<Box<[[V; 4]]>>,
-        grid: impl Into<Box<[S]>>,
-    ) -> Result<PiecewiseCubicCurve<S, V>, Error> {
+        grid: impl Into<Box<[f32]>>,
+    ) -> Result<PiecewiseCubicCurve<V>, Error> {
         let segments = segments.into();
         let grid = grid.into();
         use Error::*;
@@ -56,36 +54,32 @@ impl<S: Scalar, V: Vector<S>> PiecewiseCubicCurve<S, V> {
     }
 
     // If t is out of bounds, it is trimmed to the smallest/largest possible value
-    fn get_segment(&self, t: S) -> (S, S, S, &[V; 4]) {
+    fn get_segment(&self, t: f32) -> (f32, f32, f32, &[V; 4]) {
         let (t, idx) = self.clamp_parameter_and_find_index(t);
         (t, self.grid[idx], self.grid[idx + 1], &self.segments[idx])
     }
 }
 
-impl<S: Scalar, V: Vector<S>> Spline<S, V> for PiecewiseCubicCurve<S, V> {
-    fn evaluate(&self, t: S) -> V {
+impl<V: Vector> Spline<V> for PiecewiseCubicCurve<V> {
+    fn evaluate(&self, t: f32) -> V {
         let (t, t0, t1, a) = self.get_segment(t);
         let t = (t - t0) / (t1 - t0);
         ((a[3] * t + a[2]) * t + a[1]) * t + a[0]
     }
 
-    fn grid(&self) -> &[S] {
+    fn grid(&self) -> &[f32] {
         &self.grid
     }
 }
 
-impl<S, V> SplineWithVelocity<S, V, V> for PiecewiseCubicCurve<S, V>
+impl<V> SplineWithVelocity<V, V> for PiecewiseCubicCurve<V>
 where
-    S: Scalar,
-    V: Vector<S>,
+    V: Vector,
 {
-    fn evaluate_velocity(&self, t: S) -> V {
+    fn evaluate_velocity(&self, t: f32) -> V {
         let (t, t0, t1, a) = self.get_segment(t);
         let t = (t - t0) / (t1 - t0);
-        let one: S = one();
-        let two = one + one;
-        let three = two + one;
-        ((a[3] * three * t + a[2] * two) * t + a[1]) / (t1 - t0)
+        ((a[3] * 3.0 * t + a[2] * 2.0) * t + a[1]) / (t1 - t0)
     }
 }
 
@@ -99,14 +93,12 @@ mod tests {
     struct NormF32;
 
     impl NormWrapper<NormF32> for f32 {
-        type Norm = f32;
-
-        fn norm(&self) -> Self::Norm {
+        fn norm(&self) -> f32 {
             self.abs()
         }
     }
 
-    fn make_simple_curve() -> PiecewiseCubicCurve<f32, f32> {
+    fn make_simple_curve() -> PiecewiseCubicCurve<f32> {
         PiecewiseCubicCurve {
             segments: Box::new([[1.0, 2.5, 3.0, 4.0]]),
             grid: Box::new([5.0, 6.0]),
