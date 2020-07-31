@@ -4,7 +4,7 @@ use std::fmt::Display;
 use std::slice;
 
 use libc::{c_char, size_t};
-use nalgebra_glm as glm;
+use nalgebra::{Vector2, Vector3};
 
 use asdfspline::{AsdfPosSpline, MonotoneCubicSpline, NormWrapper, PiecewiseCubicCurve, Spline};
 
@@ -42,8 +42,8 @@ impl<T, E: Display> ResultExt<T, E> for Result<T, E> {
     }
 }
 
-pub type Vec2 = glm::TVec2<f32>;
-pub type Vec3 = glm::TVec3<f32>;
+pub type Vec2 = Vector2<f32>;
+pub type Vec3 = Vector3<f32>;
 
 struct Norm2;
 
