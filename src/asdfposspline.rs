@@ -58,11 +58,7 @@ impl From<crate::centripetalkochanekbartelsspline::Error> for Error {
         use Error::*;
         match err {
             Other::LessThanTwoPositions => LessThanTwoPositions,
-            // TODO: fix index? consider missing times?
-            // TODO: move to map_err() for this?
-            // TODO: can there be non-adjacent indices?
             Other::RepeatedPosition { index } => RepeatedPosition { index },
-            // TODO: same questions as above
             Other::TcbVsPositions {
                 tcb,
                 positions,
@@ -76,6 +72,17 @@ impl From<crate::centripetalkochanekbartelsspline::Error> for Error {
     }
 }
 
+impl From<crate::utilities::GridError> for Error {
+    fn from(err: crate::utilities::GridError) -> Self {
+        use crate::utilities::GridError as Other;
+        use Error::*;
+        match err {
+            Other::GridNan { index } => TimeNan { index },
+            Other::GridNotAscending { index } => TimesNotAscending { index },
+        }
+    }
+}
+
 impl From<crate::adapters::NewGridError> for Error {
     fn from(err: crate::adapters::NewGridError) -> Self {
         use crate::adapters::NewGridError as Other;
@@ -84,10 +91,8 @@ impl From<crate::adapters::NewGridError> for Error {
             Other::FirstTimeMissing => FirstTimeMissing,
             Other::LastTimeMissing => LastTimeMissing,
             Other::DuplicateValueWithoutTime { index } => DuplicatePositionWithoutTime { index },
-            Other::TimeNan { index } => TimeNan { index },
-            // TODO: fix index?
-            Other::GridNotAscending { index } => TimesNotAscending { index },
             Other::NewGridVsOldGrid { .. } => unreachable!(),
+            Other::FromGridError(e) => e.into(),
         }
     }
 }
@@ -99,7 +104,6 @@ impl From<crate::adapters::NewGridWithSpeedsError> for Error {
         match err {
             Other::FromNewGridError(e) => e.into(),
             Other::SpeedWithoutTime { index } => SpeedWithoutTime { index },
-            // TODO: fix index?
             Other::TooFast {
                 index,
                 speed,
@@ -109,9 +113,8 @@ impl From<crate::adapters::NewGridWithSpeedsError> for Error {
                 speed,
                 maximum,
             },
-            // TODO: fix index?
             Other::NegativeSpeed { index, speed } => NegativeSpeed { index, speed },
-            Other::TimesVsSpeeds { .. } => unreachable!(),
+            Other::GridVsSpeeds { .. } => unreachable!(),
         }
     }
 }

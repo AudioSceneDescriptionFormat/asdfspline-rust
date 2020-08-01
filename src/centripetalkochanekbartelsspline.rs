@@ -144,8 +144,7 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
             Other::LessThanTwoPositions => unreachable!(),
             Other::TangentsVsSegments { .. } => unreachable!(),
             Other::GridVsPositions { .. } => unreachable!(),
-            Other::GridNotAscending { .. } => unreachable!(),
-            Other::GridNan { .. } => unreachable!(),
+            Other::FromGridError(..) => unreachable!(),
         })
     }
 }

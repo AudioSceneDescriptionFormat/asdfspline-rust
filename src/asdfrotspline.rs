@@ -59,6 +59,17 @@ impl From<crate::quaternion::centripetalkochanekbartelsspline::Error> for Error 
     }
 }
 
+impl From<crate::utilities::GridError> for Error {
+    fn from(err: crate::utilities::GridError) -> Self {
+        use crate::utilities::GridError as Other;
+        use Error::*;
+        match err {
+            Other::GridNan { index } => TimeNan { index },
+            Other::GridNotAscending { index } => TimesNotAscending { index },
+        }
+    }
+}
+
 impl From<crate::adapters::NewGridError> for Error {
     fn from(err: crate::adapters::NewGridError) -> Self {
         use crate::adapters::NewGridError as Other;
@@ -66,9 +77,8 @@ impl From<crate::adapters::NewGridError> for Error {
         match err {
             Other::FirstTimeMissing => FirstTimeMissing,
             Other::LastTimeMissing => LastTimeMissing,
-            Other::TimeNan { index } => TimeNan { index },
-            Other::GridNotAscending { index } => TimesNotAscending { index },
             Other::DuplicateValueWithoutTime { index } => DuplicateQuaternionWithoutTime { index },
+            Other::FromGridError(e) => e.into(),
             Other::NewGridVsOldGrid { .. } => unreachable!(),
         }
     }

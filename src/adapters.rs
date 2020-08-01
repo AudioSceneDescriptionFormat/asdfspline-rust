@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-use crate::utilities::bisect;
+use crate::utilities::{bisect, GridError};
 use crate::{
     MonotoneCubicSpline, NormWrapper, PiecewiseCubicCurve, Spline, SplineWithVelocity, Vector,
 };
@@ -94,23 +94,21 @@ pub enum NewGridError {
     LastTimeMissing,
     #[error("index {index}: duplicate value without time")]
     DuplicateValueWithoutTime { index: usize },
-    #[error("index {index}: time values are not allowed to be NaN")]
-    TimeNan { index: usize },
-    #[error("index {index}: grid values must be strictly ascending")]
-    GridNotAscending { index: usize },
+    #[error(transparent)]
+    FromGridError(#[from] GridError),
 }
 
 #[derive(thiserror::Error, Debug)]
 pub enum NewGridWithSpeedsError {
     #[error(transparent)]
     FromNewGridError(#[from] NewGridError),
-    #[error("number of times ({times}) must be {} speeds ({speeds})", if *.closed {
+    #[error("number of grid values ({grid}) must be {} speeds ({speeds})", if *.closed {
         "one more than"
     } else {
         "the same as"
     })]
-    TimesVsSpeeds {
-        times: usize,
+    GridVsSpeeds {
+        grid: usize,
         speeds: usize,
         closed: bool,
     },
@@ -132,11 +130,12 @@ where
 {
     pub fn adapt(
         inner: Inner,
-        times: &[Option<f32>],
+        new_grid: impl AsRef<[Option<f32>]>,
         closed: bool,
     ) -> Result<NewGridAdapter<Value, Inner>, NewGridError> {
+        let new_grid = new_grid.as_ref();
         let speeds = vec![None; inner.grid().len() - closed as usize];
-        Self::adapt_with_speeds(inner, times, speeds, closed).map_err(|e| match e {
+        Self::adapt_with_speeds(inner, new_grid, speeds, closed).map_err(|e| match e {
             NewGridWithSpeedsError::FromNewGridError(e) => e,
             _ => unreachable!(),
         })
@@ -144,24 +143,24 @@ where
 
     pub fn adapt_with_speeds(
         inner: Inner,
-        times: impl AsRef<[Option<f32>]>,
+        new_grid: impl AsRef<[Option<f32>]>,
         speeds: impl AsRef<[Option<f32>]>,
         closed: bool,
     ) -> Result<NewGridAdapter<Value, Inner>, NewGridWithSpeedsError> {
         use NewGridError::*;
         use NewGridWithSpeedsError::*;
-        let times = times.as_ref();
+        let new_grid = new_grid.as_ref();
         let speeds = speeds.as_ref();
-        if times.len() != inner.grid().len() {
+        if new_grid.len() != inner.grid().len() {
             return Err(NewGridVsOldGrid {
-                new: times.len(),
+                new: new_grid.len(),
                 old: inner.grid().len(),
             }
             .into());
         }
-        if times.len() != speeds.len() + closed as usize {
-            return Err(TimesVsSpeeds {
-                times: times.len(),
+        if new_grid.len() != speeds.len() + closed as usize {
+            return Err(GridVsSpeeds {
+                grid: new_grid.len(),
                 speeds: speeds.len(),
                 closed,
             });
@@ -170,7 +169,7 @@ where
         let mut t2u_times = Vec::new();
         let mut t2u_speeds = Vec::new();
         let mut missing_times = Vec::new();
-        if let Some(time) = times[0] {
+        if let Some(time) = new_grid[0] {
             t2u_times.push(time);
         } else {
             return Err(FirstTimeMissing.into());
@@ -178,7 +177,7 @@ where
         t2u_speeds.push(speeds[0]);
         for i in 1..speeds.len() {
             let speed = speeds[i];
-            if let Some(time) = times[i] {
+            if let Some(time) = new_grid[i] {
                 t2u_times.push(time);
                 t2u_speeds.push(speed);
             } else if speed.is_none() {
@@ -187,7 +186,7 @@ where
                 return Err(SpeedWithoutTime { index: i });
             }
         }
-        if let Some(last_time) = *times.last().unwrap() {
+        if let Some(last_time) = *new_grid.last().unwrap() {
             if closed {
                 t2u_times.push(last_time);
                 t2u_speeds.push(speeds[0]);
@@ -209,35 +208,56 @@ where
         }
 
         let mut grid = t2u_times.clone();
-        use crate::monotonecubicspline::Error as Other;
-        let t2u =
-            MonotoneCubicSpline::with_slopes(u_grid, t2u_speeds, t2u_times).map_err(
-                |e| match e {
-                    Other::LessThanTwoValues => unreachable!(),
-                    Other::SlopesVsValues { .. } => unreachable!(),
-                    Other::GridVsValues { .. } => unreachable!(),
-                    Other::Decreasing => unreachable!(),
-                    // TODO: fix index? consider missing times? optional speeds?
-                    Other::GridNan { index } => TimeNan { index }.into(),
-                    // TODO: fix index?
-                    Other::GridNotAscending { index } => GridNotAscending { index }.into(),
-                    // TODO: fix index?
-                    Other::SlopeTooSteep {
-                        index,
-                        slope,
-                        maximum,
-                    } => TooFast {
-                        index,
-                        speed: slope,
-                        maximum,
-                    },
-                    // TODO: fix index?
-                    Other::NegativeSlope { index, slope } => NegativeSpeed {
-                        index,
-                        speed: slope,
-                    },
+        let t2u = MonotoneCubicSpline::with_slopes(u_grid, t2u_speeds, t2u_times).map_err(|e| {
+            use crate::monotonecubicspline::Error as Other;
+            use crate::utilities::GridError::*;
+
+            let fix_index = |mut idx| {
+                for &i in &missing_times {
+                    if idx >= i {
+                        idx += 1;
+                    } else {
+                        break;
+                    }
+                }
+                idx
+            };
+
+            match e {
+                // TODO: this might actually happen?
+                Other::LessThanTwoValues => unreachable!(),
+                Other::SlopesVsValues { .. } => unreachable!(),
+                Other::GridVsValues { .. } => unreachable!(),
+                Other::Decreasing => unreachable!(),
+                Other::FromGridError(e) => match e {
+                    GridNan { index } => FromNewGridError(
+                        GridNan {
+                            index: fix_index(index),
+                        }
+                        .into(),
+                    ),
+                    GridNotAscending { index } => FromNewGridError(
+                        GridNotAscending {
+                            index: fix_index(index),
+                        }
+                        .into(),
+                    ),
                 },
-            )?;
+                Other::SlopeTooSteep {
+                    index,
+                    slope,
+                    maximum,
+                } => TooFast {
+                    index: fix_index(index),
+                    speed: slope,
+                    maximum,
+                },
+                Other::NegativeSlope { index, slope } => NegativeSpeed {
+                    index: fix_index(index),
+                    speed: slope,
+                },
+            }
+        })?;
         assert!(missing_times.len() == u_missing.len());
         for i in 0..missing_times.len() {
             if let Some(time) = t2u.get_time(u_missing[i]) {
@@ -248,8 +268,6 @@ where
         }
         let t2u = t2u.into_inner();
         assert_eq!(inner.grid().len(), grid.len());
-
-        //let s_grid = grid.iter().map(|&t| t2u.evaluate(t)).collect();
 
         Ok(NewGridAdapter {
             inner,

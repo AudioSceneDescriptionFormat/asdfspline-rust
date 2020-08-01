@@ -1,6 +1,6 @@
 use superslice::Ext; // for slice::equal_range_by()
 
-use crate::utilities::bisect;
+use crate::utilities::{bisect, GridError};
 use crate::PiecewiseCubicCurve;
 use crate::Spline;
 
@@ -14,10 +14,8 @@ pub enum Error {
     SlopesVsValues { slopes: usize, values: usize },
     #[error("length of grid ({grid}) must be the same as number of values ({values})")]
     GridVsValues { grid: usize, values: usize },
-    #[error("index {index}: NaN values are not allowed in grid")]
-    GridNan { index: usize },
-    #[error("index {index}: grid values must be strictly ascending")]
-    GridNotAscending { index: usize },
+    #[error(transparent)]
+    FromGridError(#[from] GridError),
     #[error("slope at index {index} too steep ({slope:?}; maximum: {maximum:?})")]
     SlopeTooSteep {
         index: usize,
@@ -41,8 +39,7 @@ impl From<crate::shapepreservingcubicspline::Error> for Error {
                 closed: false,
             } => GridVsValues { grid, values },
             Other::GridVsValues { closed: true, .. } => unreachable!(),
-            Other::GridNan { index } => GridNan { index },
-            Other::GridNotAscending { index } => GridNotAscending { index },
+            Other::FromGridError(e) => e.into(),
             Other::SlopeTooSteep {
                 index,
                 slope,

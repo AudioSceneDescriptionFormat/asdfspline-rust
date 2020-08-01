@@ -16,10 +16,8 @@ pub enum Error {
         values: usize,
         closed: bool,
     },
-    #[error("index {index}: NaN values are not allowed in grid")]
-    GridNan { index: usize },
-    #[error("index {index}: grid values must be strictly ascending")]
-    GridNotAscending { index: usize },
+    #[error(transparent)]
+    FromGridError(#[from] GridError),
     #[error("number of slopes ({slopes}) must be same as number of values ({values})")]
     SlopesVsValues { slopes: usize, values: usize },
     #[error("slope at index {index} too steep ({slope:?}; maximum: {maximum:?})")]
@@ -30,16 +28,6 @@ pub enum Error {
     },
     #[error("slope at index {index} has wrong sign ({slope:?})")]
     SlopeWrongSign { index: usize, slope: f32 },
-}
-
-impl From<GridError> for Error {
-    fn from(e: GridError) -> Error {
-        use Error::*;
-        match e {
-            GridError::GridNan { index } => GridNan { index },
-            GridError::GridNotAscending { index } => GridNotAscending { index },
-        }
-    }
 }
 
 impl PiecewiseCubicCurve<f32> {
@@ -148,8 +136,7 @@ impl PiecewiseCubicCurve<f32> {
             Other::LessThanTwoPositions => unreachable!(),
             Other::TangentsVsSegments { .. } => unreachable!(),
             Other::GridVsPositions { .. } => unreachable!(),
-            Other::GridNotAscending { index } => GridNotAscending { index },
-            Other::GridNan { index } => GridNan { index },
+            Other::FromGridError(e) => e.into(),
         })
     }
 }

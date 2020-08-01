@@ -100,8 +100,11 @@ where
     (b - a) * sum / 2.0
 }
 
+#[derive(thiserror::Error, Debug)]
 pub enum GridError {
+    #[error("index {index}: NaN values are not allowed in grid")]
     GridNan { index: usize },
+    #[error("index {index}: grid values must be strictly ascending")]
     GridNotAscending { index: usize },
 }
 

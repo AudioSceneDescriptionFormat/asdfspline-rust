@@ -1,3 +1,4 @@
+use crate::utilities::GridError;
 use crate::PiecewiseCubicCurve;
 use crate::Vector;
 
@@ -12,10 +13,8 @@ pub enum Error {
     TangentsVsSegments { tangents: usize, segments: usize },
     #[error("length of grid ({grid}) must be the same as number of positions ({positions})")]
     GridVsPositions { grid: usize, positions: usize },
-    #[error("index {index}: NaN values are not allowed in grid")]
-    GridNan { index: usize },
-    #[error("index {index}: grid values must be strictly ascending")]
-    GridNotAscending { index: usize },
+    #[error(transparent)]
+    FromGridError(#[from] GridError),
 }
 
 impl<V: Vector> PiecewiseCubicCurve<V> {
@@ -67,8 +66,7 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
         PiecewiseCubicCurve::new(segments, grid).map_err(|err| match err {
             Other::ZeroSegments => unreachable!(),
             Other::GridVsSegments { .. } => unreachable!(),
-            Other::GridNan { index } => GridNan { index },
-            Other::GridNotAscending { index } => GridNotAscending { index },
+            Other::FromGridError(e) => e.into(),
         })
     }
 }

@@ -12,20 +12,8 @@ pub enum Error {
     ZeroSegments,
     #[error("length of grid ({grid}) must be one more than number of segments ({segments})")]
     GridVsSegments { grid: usize, segments: usize },
-    #[error("index {index}: NaN values are not allowed in grid")]
-    GridNan { index: usize },
-    #[error("index {index}: grid values must be strictly ascending")]
-    GridNotAscending { index: usize },
-}
-
-impl From<GridError> for Error {
-    fn from(e: GridError) -> Error {
-        use Error::*;
-        match e {
-            GridError::GridNan { index } => GridNan { index },
-            GridError::GridNotAscending { index } => GridNotAscending { index },
-        }
-    }
+    #[error(transparent)]
+    FromGridError(#[from] GridError),
 }
 
 impl<V: Vector> PiecewiseCubicCurve<V> {
