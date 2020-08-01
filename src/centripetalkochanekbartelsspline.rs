@@ -1,6 +1,6 @@
 use num_traits::pow;
 
-use crate::{NormWrapper, PiecewiseCubicCurve, Vector};
+use crate::{PiecewiseCubicCurve, Vector};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -21,13 +21,14 @@ pub enum Error {
 }
 
 impl<V: Vector> PiecewiseCubicCurve<V> {
-    pub fn new_centripetal_kochanek_bartels<U>(
+    pub fn new_centripetal_kochanek_bartels<F>(
         positions: &[V],
         tcb: &[[f32; 3]],
         closed: bool,
+        norm: F,
     ) -> Result<PiecewiseCubicCurve<V>, Error>
     where
-        V: NormWrapper<U>,
+        F: Fn(&V) -> f32,
     {
         use Error::*;
         let positions_len = positions.len();
@@ -63,7 +64,7 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
         for i in 0..positions.len() - 1 {
             let x0 = positions[i];
             let x1 = positions[i + 1];
-            let delta = (x1 - x0).norm().sqrt();
+            let delta = norm(&(x1 - x0)).sqrt();
             if delta == 0.0 {
                 return Err(RepeatedPosition { index: i + 1 });
             }
@@ -152,23 +153,16 @@ mod tests {
 
     use crate::Spline; // for evaluate(), grid()
 
-    struct NormF32;
-
-    impl NormWrapper<NormF32> for f32 {
-        fn norm(&self) -> f32 {
-            self.abs()
-        }
-    }
-
     #[test]
     fn test_1d() {
         let positions = [1.0f32, 2.0, 3.0].to_vec();
         let tcb = [[4.0, 5.0, 6.0]];
         let closed = false;
-        let curve = PiecewiseCubicCurve::new_centripetal_kochanek_bartels::<NormF32>(
-            &positions, &tcb, closed,
-        )
-        .unwrap();
+        let curve =
+            PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, &tcb, closed, |x| {
+                x.abs()
+            })
+            .unwrap();
         assert_eq!(curve.grid()[0], 0.0);
         assert_eq!(curve.evaluate(0.0), 1.0);
         assert_eq!(curve.evaluate(*curve.grid().last().unwrap()), 3.0);

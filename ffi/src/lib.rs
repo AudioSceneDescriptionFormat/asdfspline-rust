@@ -45,14 +45,6 @@ impl<T, E: Display> ResultExt<T, E> for Result<T, E> {
 pub type Vec2 = Vector2<f32>;
 pub type Vec3 = Vector3<f32>;
 
-struct Norm2;
-
-impl NormWrapper<Norm2> for Vec2 {
-    fn norm(&self) -> f32 {
-        self.norm()
-    }
-}
-
 pub struct Norm3;
 
 impl NormWrapper<Norm3> for Vec3 {
@@ -183,7 +175,8 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline3(
         .map(|coords| Vec3::from_column_slice(coords))
         .collect();
     let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed).into_raw()
+    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed, Vec3::norm)
+        .into_raw()
 }
 
 /// Creates a two-dimensional KB-spline.
@@ -209,7 +202,8 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline2(
         .map(|coords| Vec2::from_column_slice(coords))
         .collect();
     let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed).into_raw()
+    PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed, Vec2::norm)
+        .into_raw()
 }
 
 /// Creates a one-dimensional shape-preserving cubic spline.
