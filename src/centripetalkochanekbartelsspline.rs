@@ -122,18 +122,22 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
                 (x1 * 3.0 - x0 * 3.0 - inner_tangent * delta) / (2.0 * delta)
             };
 
-            tangents.insert(
-                0,
-                natural_end_tangent(positions[0], positions[1], grid[0], grid[1], tangents[0]),
-            );
-            let last = positions.len() - 1;
-            tangents.push(natural_end_tangent(
-                positions[last - 1],
-                positions[last],
-                grid[last - 1],
-                grid[last],
-                *tangents.last().unwrap(),
-            ));
+            if let (&[x0, x1, ..], &[t0, t1, ..]) = (&positions[..], &grid[..]) {
+                tangents.insert(0, natural_end_tangent(x0, x1, t0, t1, tangents[0]));
+            } else {
+                unreachable!();
+            }
+            if let (&[.., x0, x1], &[.., t0, t1]) = (&positions[..], &grid[..]) {
+                tangents.push(natural_end_tangent(
+                    x0,
+                    x1,
+                    t0,
+                    t1,
+                    *tangents.last().unwrap(),
+                ));
+            } else {
+                unreachable!();
+            }
         }
         use crate::cubichermitespline::Error as Other;
         PiecewiseCubicCurve::new_hermite(&positions, &tangents, &grid).map_err(|e| match e {
