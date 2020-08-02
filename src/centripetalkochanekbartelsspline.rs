@@ -1,5 +1,3 @@
-use num_traits::pow;
-
 use crate::{PiecewiseCubicCurve, Vector};
 
 #[derive(thiserror::Error, Debug)]
@@ -87,10 +85,13 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
             let c = (1.0 - T) * (1.0 - C) * (1.0 + B);
             let d = (1.0 - T) * (1.0 + C) * (1.0 - B);
 
-            let incoming = ((x0 - x_1) * c * pow(t1 - t0, 2) + (x1 - x0) * d * pow(t0 - t_1, 2))
-                / ((t1 - t0) * (t0 - t_1) * (t1 - t_1));
-            let outgoing = ((x0 - x_1) * a * pow(t1 - t0, 2) + (x1 - x0) * b * pow(t0 - t_1, 2))
-                / ((t1 - t0) * (t0 - t_1) * (t1 - t_1));
+            let denominator = (t1 - t0) * (t0 - t_1) * (t1 - t_1);
+            let incoming = ((x0 - x_1) * c * (t1 - t0).powi(2)
+                + (x1 - x0) * d * (t0 - t_1).powi(2))
+                / denominator;
+            let outgoing = ((x0 - x_1) * a * (t1 - t0).powi(2)
+                + (x1 - x0) * b * (t0 - t_1).powi(2))
+                / denominator;
             tangents.push(incoming);
             tangents.push(outgoing);
         }
