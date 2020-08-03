@@ -92,12 +92,14 @@ pub type AsdfRotSpline = NewGridAdapter<
 impl AsdfRotSpline {
     pub fn new(
         quaternions: impl Into<Vec<UnitQuaternion>>,
-        times: &[Option<f32>],
-        tcb: &[[f32; 3]],
+        times: impl AsRef<[Option<f32>]>,
+        tcb: impl AsRef<[[f32; 3]]>,
         closed: bool,
     ) -> Result<AsdfRotSpline, Error> {
         use Error::*;
         let quaternions = quaternions.into();
+        let times = times.as_ref();
+        let tcb = tcb.as_ref();
         if quaternions.len() + closed as usize != times.len() {
             return Err(TimesVsQuaternions {
                 times: times.len(),

@@ -127,13 +127,17 @@ where
     V: Vector + NormWrapper<U>,
 {
     pub fn new(
-        positions: &[V],
-        times: &[Option<f32>],
-        speeds: &[Option<f32>],
-        tcb: &[[f32; 3]],
+        positions: impl AsRef<[V]>,
+        times: impl AsRef<[Option<f32>]>,
+        speeds: impl AsRef<[Option<f32>]>,
+        tcb: impl AsRef<[[f32; 3]]>,
         closed: bool,
     ) -> Result<AsdfPosSpline<V, U>, Error> {
         use Error::*;
+        let positions = positions.as_ref();
+        let times = times.as_ref();
+        let speeds = speeds.as_ref();
+        let tcb = tcb.as_ref();
         if positions.len() + closed as usize != times.len() {
             return Err(TimesVsPositions {
                 times: times.len(),
