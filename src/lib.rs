@@ -13,14 +13,14 @@ The required Rust packages (a.k.a. "crates") are listed in the file
 # Tests
 
 ```text
-cargo test --all
+cargo test --workspace
 ```
 
 There are further tests (using Python) in the `python/` directory.
 
 # API Documentation
 
-Run `cargo doc --all` in the main directory to create the documentation.
+Run `cargo doc --workspace` in the main directory to create the documentation.
 The generated HTML documentation can be accessed via
 [target/doc/asdfspline/index.html](index.html) and
 [target/doc/asdfspline_ffi/index.html](../asdfspline_ffi/index.html).
