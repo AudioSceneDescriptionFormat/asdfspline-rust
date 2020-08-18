@@ -33,6 +33,9 @@ Using [cargo-readme](https://github.com/livioribeiro/cargo-readme) (`cargo insta
 cargo readme -o README.md
 ```
 */
+#![deny(unsafe_code)] // NB: A lot of unsafe code is in the "ffi" sub-crate
+#![warn(rust_2018_idioms)]
+
 use std::ops::{Add, Div, DivAssign, Mul, Sub};
 
 use superslice::Ext; // for slice::upper_bound_by()
