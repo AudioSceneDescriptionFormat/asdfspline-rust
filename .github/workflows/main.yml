@@ -70,4 +70,4 @@ jobs:
     - name: Execute notebooks
       working-directory: python/examples
       run: |
-        python -m nbconvert --execute *.ipynb
+        python -m nbconvert --execute --to html *.ipynb
