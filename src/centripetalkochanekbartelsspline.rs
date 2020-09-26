@@ -69,8 +69,8 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
             grid.push(*grid.last().unwrap() + delta);
         }
         let mut tangents = Vec::<V>::new();
-        assert!(positions.len() == grid.len());
-        assert!(positions.len() == tcb.len() + 2);
+        assert_eq!(positions.len(), grid.len());
+        assert_eq!(positions.len(), tcb.len() + 2);
         for i in 0..positions.len() - 2 {
             let x_1 = positions[i];
             let x0 = positions[i + 1];
@@ -108,7 +108,7 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
             positions = &positions_vec;
         } else if positions.len() == 2 {
             // Straight line
-            assert!(grid.len() == 2);
+            assert_eq!(grid.len(), 2);
             assert!(tangents.is_empty());
             let tangent = (positions[1] - positions[0]) / (grid[1] - grid[0]);
             tangents.push(tangent);
