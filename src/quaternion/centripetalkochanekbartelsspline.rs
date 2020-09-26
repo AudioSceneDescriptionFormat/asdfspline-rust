@@ -147,6 +147,19 @@ impl CubicDeCasteljau {
             let _ = control_polygon.pop();
             let _ = grid.remove(0);
             let _ = grid.pop();
+        } else if control_polygon.is_empty() {
+            // spherical linear interpolation between two quaternions
+            assert_eq!(grid.len(), 2);
+            assert!(tcb.is_empty());
+            if let [q0, q1] = quaternions[..] {
+                let offset = q0.slerp(&q1, 1.0 / 3.0); // "cubic" spline, degree 3
+                control_polygon.push(q0);
+                control_polygon.push(offset * q0);
+                control_polygon.push(offset.inverse() * q1);
+                control_polygon.push(q1);
+            } else {
+                unreachable!();
+            }
         } else {
             if let ([outer, ..], [inner_control, inner, ..]) =
                 (&quaternions[..], &control_polygon[..])
