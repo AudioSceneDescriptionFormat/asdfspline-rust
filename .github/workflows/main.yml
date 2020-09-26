@@ -9,13 +9,13 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v2
-    - name: Build Rust library
-      run: |
-        cargo build --all-features --workspace
-    - name: Run Rust tests
-      run: |
-        cargo test --workspace
+      - uses: actions/checkout@v2
+      - name: Build Rust library
+        run: |
+          cargo build --all-features --workspace
+      - name: Run Rust tests
+        run: |
+          cargo test --workspace
 
   ffi-python:
     strategy:
@@ -23,34 +23,34 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-    - name: Install cbindgen
-      run: |
-        cargo install cbindgen
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v1
-      with:
-        python-version: 3.8
-    - name: Double-check Python version
-      run: |
-        python --version
-        python -m pip --version
-    - name: Install Python dependencies
-      run: |
-        python -m pip install nbconvert ipykernel matplotlib
-        python -m pip install pytest
-    - name: Install Python package
-      working-directory: python
-      run: |
-        python -m pip install -e .
-    - name: Run Python tests
-      working-directory: python
-      run: |
-        python -m pytest
-    - name: Execute notebooks
-      working-directory: python/examples
-      run: |
-        python -m nbconvert --execute --to html *.ipynb
+      - name: Install cbindgen
+        run: |
+          cargo install cbindgen
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+      - name: Double-check Python version
+        run: |
+          python --version
+          python -m pip --version
+      - name: Install Python dependencies
+        run: |
+          python -m pip install nbconvert ipykernel matplotlib
+          python -m pip install pytest
+      - name: Install Python package
+        working-directory: python
+        run: |
+          python -m pip install -e .
+      - name: Run Python tests
+        working-directory: python
+        run: |
+          python -m pytest
+      - name: Execute notebooks
+        working-directory: python/examples
+        run: |
+          python -m nbconvert --execute --to html *.ipynb
 
   check-code:
     runs-on: ubuntu-latest
