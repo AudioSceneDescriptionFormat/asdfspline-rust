@@ -152,7 +152,7 @@ impl CubicDeCasteljau {
             assert_eq!(grid.len(), 2);
             assert!(tcb.is_empty());
             if let [q0, q1] = quaternions[..] {
-                let offset = q0.slerp(&q1, 1.0 / 3.0); // "cubic" spline, degree 3
+                let offset = (q1 * q0.inverse()).powf(1.0 / 3.0); // "cubic" spline, degree 3
                 control_polygon.push(q0);
                 control_polygon.push(offset * q0);
                 control_polygon.push(offset.inverse() * q1);
