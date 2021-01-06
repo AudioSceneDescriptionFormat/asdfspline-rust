@@ -143,7 +143,7 @@ impl MonotoneCubicSpline {
                 0.0001,
                 500,
             );
-            assert!(0.0 <= time && time <= 1.0);
+            assert!((0.0..=1.0).contains(&time));
             let t0 = self.inner.grid()[idx];
             let t1 = self.inner.grid()[idx + 1];
             Some(time * (t1 - t0) + t0)
