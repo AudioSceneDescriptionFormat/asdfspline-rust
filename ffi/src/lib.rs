@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::ffi::CString;
 use std::fmt::Display;
+use std::ptr::copy_nonoverlapping;
 use std::slice;
 
 use libc::{c_char, size_t};
@@ -118,9 +119,7 @@ pub unsafe extern "C" fn asdf_asdfposspline3_evaluate(
 ) {
     for i in 0..count {
         let v = curve.evaluate(*times.add(i));
-        *output.add(3 * i) = *v.as_ptr();
-        *output.add(3 * i + 1) = *v.as_ptr().add(1);
-        *output.add(3 * i + 2) = *v.as_ptr().add(2);
+        copy_nonoverlapping(v.as_ptr(), output.add(3 * i), 3);
     }
 }
 
@@ -135,7 +134,7 @@ pub unsafe extern "C" fn asdf_asdfposspline3_grid(
     output: *mut *const f32,
 ) -> size_t {
     let grid = curve.grid();
-    *output = grid.as_ptr();
+    output.write(grid.as_ptr());
     grid.len()
 }
 
@@ -318,7 +317,9 @@ pub unsafe extern "C" fn asdf_monotonecubic_get_time(
     output: *mut f32,
 ) {
     for i in 0..count {
-        *output.add(i) = curve.get_time(*values.add(i)).unwrap_or(std::f32::NAN);
+        output
+            .add(i)
+            .write(curve.get_time(*values.add(i)).unwrap_or(std::f32::NAN))
     }
 }
 
@@ -350,9 +351,7 @@ pub unsafe extern "C" fn asdf_cubiccurve3_evaluate(
 ) {
     for i in 0..count {
         let v = curve.evaluate(*times.add(i));
-        *output.add(3 * i) = *v.as_ptr();
-        *output.add(3 * i + 1) = *v.as_ptr().add(1);
-        *output.add(3 * i + 2) = *v.as_ptr().add(2);
+        copy_nonoverlapping(v.as_ptr(), output.add(3 * i), 3);
     }
 }
 
@@ -367,7 +366,7 @@ pub unsafe extern "C" fn asdf_cubiccurve3_grid(
     output: *mut *const f32,
 ) -> size_t {
     let grid = curve.grid();
-    *output = grid.as_ptr();
+    output.write(grid.as_ptr());
     grid.len()
 }
 
@@ -396,8 +395,7 @@ pub unsafe extern "C" fn asdf_cubiccurve2_evaluate(
 ) {
     for i in 0..count {
         let v = curve.evaluate(*times.add(i));
-        *output.add(2 * i) = *v.as_ptr();
-        *output.add(2 * i + 1) = *v.as_ptr().add(1);
+        copy_nonoverlapping(v.as_ptr(), output.add(2 * i), 2);
     }
 }
 
@@ -412,7 +410,7 @@ pub unsafe extern "C" fn asdf_cubiccurve2_grid(
     output: *mut *const f32,
 ) -> size_t {
     let grid = curve.grid();
-    *output = grid.as_ptr();
+    output.write(grid.as_ptr());
     grid.len()
 }
 
@@ -442,7 +440,7 @@ pub unsafe extern "C" fn asdf_cubiccurve1_evaluate(
     output: *mut f32,
 ) {
     for i in 0..count {
-        *output.add(i) = curve.evaluate(*times.add(i));
+        output.add(i).write(curve.evaluate(*times.add(i)));
     }
 }
 
@@ -457,6 +455,6 @@ pub unsafe extern "C" fn asdf_cubiccurve1_grid(
     output: *mut *const f32,
 ) -> size_t {
     let grid = curve.grid();
-    *output = grid.as_ptr();
+    output.write(grid.as_ptr());
     grid.len()
 }
