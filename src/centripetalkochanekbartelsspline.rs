@@ -123,12 +123,12 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
                 (x1 * 3.0 - x0 * 3.0 - inner_tangent * delta) / (2.0 * delta)
             };
 
-            if let (&[x0, x1, ..], &[t0, t1, ..]) = (&positions[..], &grid[..]) {
+            if let (&[x0, x1, ..], &[t0, t1, ..]) = (positions, &grid[..]) {
                 tangents.insert(0, natural_end_tangent(x0, x1, t0, t1, tangents[0]));
             } else {
                 unreachable!();
             }
-            if let (&[.., x0, x1], &[.., t0, t1]) = (&positions[..], &grid[..]) {
+            if let (&[.., x0, x1], &[.., t0, t1]) = (positions, &grid[..]) {
                 tangents.push(natural_end_tangent(
                     x0,
                     x1,
