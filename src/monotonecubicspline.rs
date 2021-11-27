@@ -94,10 +94,12 @@ impl MonotoneCubicSpline {
         })
     }
 
+    #[must_use]
     pub fn inner_ref(&self) -> &PiecewiseCubicCurve<f32> {
         &self.inner
     }
 
+    #[must_use]
     pub fn into_inner(self) -> PiecewiseCubicCurve<f32> {
         self.inner
     }
@@ -107,6 +109,7 @@ impl MonotoneCubicSpline {
     /// If the solution is not unique, `None` is returned.
     /// If "value" is outside the range, the first/last time is returned.
     // TODO: rename to something with "solve"?
+    #[must_use]
     pub fn get_time(&self, value: f32) -> Option<f32> {
         // NB: If initially given values are monotone (which we checked above!),
         // repetitions (i.e. a plateau) can only occur at those exact values.

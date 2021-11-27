@@ -101,7 +101,7 @@ pub trait Spline<Value> {
     }
 }
 
-/// To work around Rust's orphan rules, see https://blog.mgattozzi.dev/orphan-rules/
+/// To work around Rust's orphan rules, see <https://blog.mgattozzi.dev/orphan-rules/>
 pub trait NormWrapper<U> {
     fn norm(&self) -> f32;
 }

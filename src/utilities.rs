@@ -50,13 +50,13 @@ where
 
 /// Gauss-Legendre quadrature of order 13.
 ///
-/// https://en.wikipedia.org/wiki/Gaussian_quadrature
+/// <https://en.wikipedia.org/wiki/Gaussian_quadrature>
 ///
-/// Arrays were generated with scipy.special.roots_legendre(13).
+/// Arrays were generated with `scipy.special.roots_legendre(13)`.
 /// 13th order typically leads to results within single-precision
 /// accuracy [citation needed].
 ///
-/// See also https://pomax.github.io/bezierinfo/legendre-gauss.html
+/// See also <https://pomax.github.io/bezierinfo/legendre-gauss.html>
 pub fn gauss_legendre13<F>(f: F, a: f32, b: f32) -> f32
 where
     F: Fn(f32) -> f32,

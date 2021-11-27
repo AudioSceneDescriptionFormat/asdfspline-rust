@@ -37,6 +37,7 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
         Ok(PiecewiseCubicCurve { segments, grid })
     }
 
+    #[must_use]
     pub fn segments(&self) -> &[[V; 4]] {
         &self.segments
     }

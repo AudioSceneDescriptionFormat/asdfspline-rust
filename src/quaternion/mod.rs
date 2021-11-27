@@ -52,6 +52,7 @@ pub fn canonicalize<'a>(
 }
 
 /// angles in degrees!
+#[must_use]
 pub fn angles2quat(azim: f32, elev: f32, roll: f32) -> UnitQuaternion {
     UnitQuaternion::from_axis_angle(&Vec3::z_axis(), azim.to_radians())
         * UnitQuaternion::from_axis_angle(&Vec3::x_axis(), elev.to_radians())

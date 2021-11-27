@@ -111,21 +111,21 @@ impl PiecewiseCubicCurve<f32> {
             let chord = (values[1] - values[0]) / (grid[1] - grid[0]);
             let one = optional_slopes[0];
             let two = optional_slopes[1];
-            slopes.push(calculate_slope(&one, &two, chord, 0)?);
-            slopes.push(calculate_slope(&two, &one, chord, 1)?);
+            slopes.push(calculate_slope(one, two, chord, 0)?);
+            slopes.push(calculate_slope(two, one, chord, 1)?);
         } else {
             slopes.insert(
                 0,
                 calculate_slope(
-                    optional_slopes.first().unwrap(),
-                    &slopes.first().copied(),
+                    *optional_slopes.first().unwrap(),
+                    slopes.first().copied(),
                     (values[1] - values[0]) / (grid[1] - grid[0]),
                     0,
                 )?,
             );
             slopes.push(calculate_slope(
-                optional_slopes.last().unwrap(),
-                &slopes.last().copied(),
+                *optional_slopes.last().unwrap(),
+                slopes.last().copied(),
                 (values[values.len() - 1] - values[values.len() - 2])
                     / (grid[grid.len() - 1] - grid[grid.len() - 2]),
                 slopes.len(),
@@ -142,15 +142,15 @@ impl PiecewiseCubicCurve<f32> {
 }
 
 fn calculate_slope(
-    main: &Option<f32>,
-    other: &Option<f32>,
+    main: Option<f32>,
+    other: Option<f32>,
     chord: f32,
     index: usize,
 ) -> Result<f32, Error> {
     if let Some(main) = main {
-        Ok(verify_slope(*main, chord, chord, index)?)
+        Ok(verify_slope(main, chord, chord, index)?)
     } else if let Some(other) = other {
-        Ok(end_slope(*other, chord))
+        Ok(end_slope(other, chord))
     } else {
         Ok(chord)
     }
