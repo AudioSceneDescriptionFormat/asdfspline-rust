@@ -32,8 +32,8 @@ fn calculate_control_quaternions(
         let c = (1.0 - T) * (1.0 - C) * (1.0 + B);
         let d = (1.0 - T) * (1.0 + C) * (1.0 - B);
 
-        let q_in = q_1.rotation_to(&q0);
-        let q_out = q0.rotation_to(&q1);
+        let q_in = q_1.rotation_to(q0);
+        let q_out = q0.rotation_to(q1);
         // w means omega (i.e. the angular velocity vector)
         let w_in = q_in.scaled_axis() / (t0 - t_1);
         let w_out = q_out.scaled_axis() / (t1 - t0);

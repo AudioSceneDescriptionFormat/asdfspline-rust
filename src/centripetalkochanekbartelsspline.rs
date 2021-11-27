@@ -141,7 +141,7 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
             }
         }
         use crate::cubichermitespline::Error as Other;
-        PiecewiseCubicCurve::new_hermite(&positions, &tangents, &grid).map_err(|e| match e {
+        PiecewiseCubicCurve::new_hermite(positions, &tangents, &grid).map_err(|e| match e {
             Other::LessThanTwoPositions => unreachable!(),
             Other::TangentsVsSegments { .. } => unreachable!(),
             Other::GridVsPositions { .. } => unreachable!(),
