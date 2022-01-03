@@ -101,7 +101,7 @@ impl CubicDeCasteljau {
         }
 
         if closed {
-            if let (&[first, mut second, ..], [.., mut penultimate, last]) =
+            if let (&[first, mut second, ..], &[.., mut penultimate, last]) =
                 (&quaternions[..], &quaternions[..])
             {
                 if penultimate.dot(&first) < 0.0 {
