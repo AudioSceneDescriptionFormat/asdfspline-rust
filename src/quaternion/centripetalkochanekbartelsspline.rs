@@ -52,13 +52,9 @@ fn calculate_control_quaternions(
     }
 }
 
-/// Calculates second control quaternion given the other three
-fn natural_control_quaternion(
-    outer: &UnitQuaternion,
-    inner_control: &UnitQuaternion,
-    inner: &UnitQuaternion,
-) -> UnitQuaternion {
-    (inner.rotation_to(inner_control) * outer.rotation_to(inner)).powf(0.5) * outer
+/// Calculates second control quaternion given first and third.
+fn natural_control_quaternion(first: &UnitQuaternion, third: &UnitQuaternion) -> UnitQuaternion {
+    first.rotation_to(third).powf(0.5) * first
 }
 
 impl CubicDeCasteljau {
@@ -161,21 +157,18 @@ impl CubicDeCasteljau {
                 unreachable!();
             }
         } else {
-            if let ([outer, ..], [inner_control, inner, ..]) =
-                (&quaternions[..], &control_polygon[..])
-            {
-                let outer_control = natural_control_quaternion(outer, inner_control, inner);
-                control_polygon.insert(0, outer_control);
-                control_polygon.insert(0, *outer);
+            if let ([first, ..], [third, ..]) = (&quaternions[..], &control_polygon[..]) {
+                let second = natural_control_quaternion(first, third);
+                control_polygon.insert(0, second);
+                control_polygon.insert(0, *first);
             } else {
                 unreachable!();
             }
-            if let ([.., inner, inner_control], [.., outer]) =
-                (&control_polygon[..], &quaternions[..])
-            {
-                let outer_control = natural_control_quaternion(outer, inner_control, inner);
-                control_polygon.push(outer_control);
-                control_polygon.push(*outer);
+            // Now counting from the end ...
+            if let ([.., third], [.., first]) = (&control_polygon[..], &quaternions[..]) {
+                let second = natural_control_quaternion(first, third);
+                control_polygon.push(second);
+                control_polygon.push(*first);
             } else {
                 unreachable!();
             }
