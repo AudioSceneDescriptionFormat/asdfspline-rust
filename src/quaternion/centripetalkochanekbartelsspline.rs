@@ -76,8 +76,7 @@ impl CubicDeCasteljau {
             });
         }
         if closed {
-            let mut quaternions_vec;
-            quaternions_vec = quaternions.into_owned();
+            let mut quaternions_vec = quaternions.into_owned();
             quaternions_vec.push(quaternions_vec[0]);
             quaternions = quaternions_vec.into();
         }
@@ -110,8 +109,7 @@ impl CubicDeCasteljau {
                 if last.dot(&second) < 0.0 {
                     second.inverse_mut();
                 }
-                let mut quaternions_vec;
-                quaternions_vec = quaternions.into_owned();
+                let mut quaternions_vec = quaternions.into_owned();
                 quaternions_vec.insert(0, penultimate);
                 quaternions_vec.push(second);
                 quaternions = quaternions_vec.into();
