@@ -63,6 +63,12 @@ jobs:
         working-directory: python/examples
         run: |
           python -m nbconvert --execute --to html *.ipynb
+      - name: Upload converted notebooks
+        uses: actions/upload-artifact@v3
+        with:
+          name: notebooks-${{ matrix.os }}
+          path: |
+            python/examples/*.html
 
   check-code:
     runs-on: ubuntu-latest
