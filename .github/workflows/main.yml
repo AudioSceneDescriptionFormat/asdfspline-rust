@@ -55,6 +55,12 @@ jobs:
         working-directory: python
         run: |
           python -m pip install -e .
+      - name: Upload asdfspline.h header file
+        uses: actions/upload-artifact@v3
+        with:
+          name: header-file-${{ matrix.os }}
+          path: |
+            python/asdfspline.h
       - name: Run Python tests
         working-directory: python
         run: |
