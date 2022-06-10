@@ -4,4 +4,4 @@ no_includes = true
 
 [parse]
 parse_deps = true
-include = ["asdfspline", "nalgebra-glm", "nalgebra"]
+include = ["asdfspline", "nalgebra"]
