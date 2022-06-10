@@ -14,4 +14,3 @@ members = ["ffi"]
 superslice = "1"
 thiserror = "1.0"
 nalgebra = "0.31"
-simba = "0.3"
