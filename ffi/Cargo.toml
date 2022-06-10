@@ -11,4 +11,5 @@ crate-type = ["staticlib"]
 [dependencies]
 asdfspline = { path = ".." }
 libc = "*"
-nalgebra = "0.31"
+# This doesn't have to be the same version as used in the main crate:
+nalgebra = "0.27.1"

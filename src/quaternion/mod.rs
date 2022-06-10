@@ -1,5 +1,8 @@
 use std::borrow::Cow;
 
+// Re-export to make it easy for downstream crates to use the proper version:
+pub use nalgebra;
+
 // Rename to avoid cbindgen error "'UnitQuaternion is not generic"
 use nalgebra::UnitQuaternion as GenericUnitQuaternion;
 use nalgebra::Vector3;
