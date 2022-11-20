@@ -13,13 +13,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: stable
-          override: true
       - name: Clone Git repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
       - name: Run Rust tests
@@ -36,13 +34,13 @@ jobs:
         run: |
           cargo install cbindgen
       - name: Clone Git repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
       - name: Set up Python
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v4
         with:
-          python-version: 3.8
+          python-version: "3.10"
       - name: Double-check Python version
         run: |
           python --version
@@ -80,22 +78,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone Git repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@master
         with:
-          profile: minimal
           toolchain: stable
           components: rustfmt, clippy
-          override: true
       - name: rustfmt
         run: |
           cargo fmt --all --check
       - name: clippy
         run: |
           cargo clippy --all-targets --all-features -- -D warnings
-      - name: docs
+      - name: Build docs
         run: |
-          cargo doc --verbose --workspace --all-features
+          cargo rustdoc --all-features -- -D warnings
