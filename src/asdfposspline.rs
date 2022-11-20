@@ -186,24 +186,18 @@ mod tests {
 
     #[test]
     fn simple_linear() {
-        let s = AsdfPosSpline1::new(
-            &[1.0, 2.0],
-            &[Some(0.0), Some(3.0)],
-            &[None, None],
-            &[],
-            false,
-        )
-        .unwrap();
+        let s = AsdfPosSpline1::new([1.0, 2.0], [Some(0.0), Some(3.0)], [None, None], [], false)
+            .unwrap();
         assert_eq!(s.evaluate(1.5), 1.5);
     }
 
     #[test]
     fn simple_closed() {
         let s = AsdfPosSpline1::new(
-            &[1.0, 2.0],
-            &[Some(0.0), None, Some(3.0)],
-            &[None, None],
-            &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            [1.0, 2.0],
+            [Some(0.0), None, Some(3.0)],
+            [None, None],
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
             true,
         )
         .unwrap();
@@ -213,10 +207,10 @@ mod tests {
     #[test]
     fn closed_with_time() {
         let s = AsdfPosSpline1::new(
-            &[1.0, 2.0],
-            &[Some(3.0), Some(4.0), Some(5.0)],
-            &[None, None],
-            &[[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            [1.0, 2.0],
+            [Some(3.0), Some(4.0), Some(5.0)],
+            [None, None],
+            [[0.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
             true,
         )
         .unwrap();
