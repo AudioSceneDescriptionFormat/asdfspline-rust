@@ -32,7 +32,8 @@ def plot_3d(s, dots_per_second=10, ax=None):
     total_duration = s.grid[-1] - s.grid[0]
     times = s.grid[0] + np.arange(int(total_duration * dots_per_second) + 1) / dots_per_second
     if ax is None:
-        ax = plt.gca(projection='3d')
+        fig = plt.figure()
+        ax = fig.add_subplot(projection='3d')
     ax.plot(*s.evaluate(times).T, '.')
     # https://github.com/matplotlib/matplotlib/issues/18020
     #ax.scatter(*s.evaluate(s.grid).T, marker='x', c='black')
