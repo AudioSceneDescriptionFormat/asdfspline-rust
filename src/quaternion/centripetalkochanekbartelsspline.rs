@@ -1,4 +1,4 @@
-use super::{canonicalize, CubicDeCasteljau, UnitQuaternion};
+use super::{canonicalize, negate, CubicDeCasteljau, UnitQuaternion};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -100,10 +100,10 @@ impl CubicDeCasteljau {
                 (&quaternions[..], &quaternions[..])
             {
                 if penultimate.dot(&first) < 0.0 {
-                    penultimate.inverse_mut();
+                    negate(&mut penultimate);
                 }
                 if last.dot(&second) < 0.0 {
-                    second.inverse_mut();
+                    negate(&mut second);
                 }
                 quaternions.insert(0, penultimate);
                 quaternions.push(second);

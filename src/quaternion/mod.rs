@@ -24,11 +24,16 @@ impl NormWrapper<AngularVelocityNorm> for Vec3 {
     }
 }
 
+// Neg doesn't seem to be implemented for UnitQuaternion.
+fn negate(q: &mut UnitQuaternion) {
+    *q = UnitQuaternion::new_unchecked(-q.into_inner());
+}
+
 pub fn canonicalize(quaternions: &mut [UnitQuaternion]) {
     let mut p = UnitQuaternion::identity();
     for q in quaternions {
         if p.dot(q) < 0.0 {
-            q.inverse_mut();
+            negate(q);
         }
         p = *q;
     }
