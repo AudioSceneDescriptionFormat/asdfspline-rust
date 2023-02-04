@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use super::{canonicalize, CubicDeCasteljau, UnitQuaternion};
 
 #[derive(thiserror::Error, Debug)]
@@ -58,8 +56,8 @@ fn natural_control_quaternion(first: &UnitQuaternion, third: &UnitQuaternion) ->
 }
 
 impl CubicDeCasteljau {
-    pub fn new_centripetal_kochanek_bartels<'a>(
-        quaternions: impl Into<Cow<'a, [UnitQuaternion]>>,
+    pub fn new_centripetal_kochanek_bartels(
+        quaternions: impl Into<Vec<UnitQuaternion>>,
         tcb: &[[f32; 3]],
         closed: bool,
     ) -> Result<CubicDeCasteljau, Error> {
@@ -76,12 +74,10 @@ impl CubicDeCasteljau {
             });
         }
         if closed {
-            let mut quaternions_vec = quaternions.into_owned();
-            quaternions_vec.push(quaternions_vec[0]);
-            quaternions = quaternions_vec.into();
+            quaternions.push(quaternions[0]);
         }
 
-        quaternions = canonicalize(quaternions);
+        canonicalize(&mut quaternions);
 
         // Create grid with centripetal parameterization
 
@@ -109,10 +105,8 @@ impl CubicDeCasteljau {
                 if last.dot(&second) < 0.0 {
                     second.inverse_mut();
                 }
-                let mut quaternions_vec = quaternions.into_owned();
-                quaternions_vec.insert(0, penultimate);
-                quaternions_vec.push(second);
-                quaternions = quaternions_vec.into();
+                quaternions.insert(0, penultimate);
+                quaternions.push(second);
             } else {
                 unreachable!();
             }

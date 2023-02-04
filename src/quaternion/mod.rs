@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 // Re-export to make it easy for downstream crates to use the proper version:
 pub use nalgebra;
 
@@ -26,31 +24,13 @@ impl NormWrapper<AngularVelocityNorm> for Vec3 {
     }
 }
 
-/// This is probably more complicated than it needs to be.
-/// It's mainly for experimenting with the `Cow` type.
-pub fn canonicalize<'a>(
-    quaternions: impl Into<Cow<'a, [UnitQuaternion]>>,
-) -> Cow<'a, [UnitQuaternion]> {
-    let quaternions = quaternions.into();
+pub fn canonicalize(quaternions: &mut [UnitQuaternion]) {
     let mut p = UnitQuaternion::identity();
-
-    let mut predicate = move |q: &UnitQuaternion| {
-        let result = p.dot(q) < 0.0;
-        p = *q;
-        result
-    };
-
-    if let Some(idx) = quaternions.iter().position(predicate) {
-        let mut quaternions = quaternions.into_owned();
-        quaternions[idx].inverse_mut();
-        for q in &mut quaternions[idx + 1..] {
-            if predicate(q) {
-                q.inverse_mut();
-            }
+    for q in quaternions {
+        if p.dot(q) < 0.0 {
+            q.inverse_mut();
         }
-        quaternions.into()
-    } else {
-        quaternions
+        p = *q;
     }
 }
 
