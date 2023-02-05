@@ -22,7 +22,6 @@ ffibuilder.set_source(
     include_dirs=['.'],
     libraries=['asdfspline_ffi'],
     library_dirs=['../target/release'],
-    undef_macros=['NDEBUG'],
 )
 
 if __name__ == '__main__':
