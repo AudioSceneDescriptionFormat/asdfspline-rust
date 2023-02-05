@@ -35,7 +35,8 @@ class AsdfSpline(_FromPtr):
                 break
             position = _np.asarray(position, dtype='float32')
             if position.ndim != 1:
-                raise ValueError('positions must be one-dimensional')
+                raise ValueError(
+                    '"position" must be a list of 2 or 3 coordinates')
             if len(position) == 2:
                 position = _np.append(position, 0)
             if len(position) != 3:
@@ -64,11 +65,10 @@ class AsdfSpline(_FromPtr):
             if tcb.pop(0) != (0, 0, 0):
                 raise ValueError(
                     'first vertex cannot have tension/continuity/bias '
-                    '(except for closed curves')
+                    '(except for closed curves)')
             if tcb.pop(-1) != (0, 0, 0):
                 raise ValueError(
-                    'last vertex cannot have tension/continuity/bias '
-                    '(except for closed curves)')
+                    'last vertex cannot have tension/continuity/bias')
         positions, positions_ptr = _make_buffer(3, positions)
         if _np.isnan(times[0]):
             # NB: NaN <= 0 returns False
