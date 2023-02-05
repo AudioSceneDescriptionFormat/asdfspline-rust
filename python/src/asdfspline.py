@@ -246,7 +246,7 @@ class ShapePreservingCubicSpline(_CubicCurve1):
 
 class MonotoneCubicSpline(_CubicCurve1):
 
-    def __init__(self, values, *, slopes=None, grid=None):
+    def __init__(self, values, *, slopes=None, grid=None, cyclic=False):
         values, values_ptr = _make_buffer(1, values, 'values')
         if grid is None:
             grid = _np.arange(len(values), dtype='float32')
@@ -256,6 +256,7 @@ class MonotoneCubicSpline(_CubicCurve1):
                 _lib.asdf_monotonecubic(
                     values_ptr, len(values),
                     grid_ptr, len(grid),
+                    cyclic,
                 ),
                 _lib.asdf_monotonecubic_free)
         else:
@@ -265,6 +266,7 @@ class MonotoneCubicSpline(_CubicCurve1):
                     values_ptr, len(values),
                     slopes_ptr, len(slopes),
                     grid_ptr, len(grid),
+                    cyclic,
                 ),
                 _lib.asdf_monotonecubic_free)
         super().__init__(ptr)  # Just for error-handling

@@ -249,10 +249,11 @@ pub unsafe extern "C" fn asdf_monotonecubic(
     values_count: size_t,
     grid: *const f32,
     grid_count: size_t,
+    cyclic: bool,
 ) -> Option<Box<AsdfMonotoneCubic>> {
     let values = slice::from_raw_parts(values, values_count);
     let grid = slice::from_raw_parts(grid, grid_count);
-    MonotoneCubicSpline::new(values, grid).into_box()
+    MonotoneCubicSpline::new(values, grid, cyclic).into_box()
 }
 
 /// Creates a one-dimensional monotone cubic spline (given values and slopes).
@@ -269,6 +270,7 @@ pub unsafe extern "C" fn asdf_monotonecubic_with_slopes(
     slopes_count: size_t,
     grid: *const f32,
     grid_count: size_t,
+    cyclic: bool,
 ) -> Option<Box<AsdfMonotoneCubic>> {
     let values = slice::from_raw_parts(values, values_count);
     let slopes = slice::from_raw_parts(slopes, slopes_count);
@@ -277,7 +279,7 @@ pub unsafe extern "C" fn asdf_monotonecubic_with_slopes(
         .map(|&x| if x.is_nan() { None } else { Some(x) })
         .collect();
     let grid = slice::from_raw_parts(grid, grid_count);
-    MonotoneCubicSpline::with_slopes(values, slopes, grid).into_box()
+    MonotoneCubicSpline::with_slopes(values, slopes, grid, cyclic).into_box()
 }
 
 /// Frees an `AsdfMonotoneCubic`

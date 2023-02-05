@@ -208,56 +208,63 @@ where
         }
 
         let mut grid = t2u_times.clone();
-        let t2u = MonotoneCubicSpline::with_slopes(u_grid, t2u_speeds, t2u_times).map_err(|e| {
-            use crate::monotonecubicspline::Error as Other;
-            use crate::utilities::GridError::*;
+        let cyclic = closed && t2u_speeds[0].is_none();
+        if cyclic {
+            assert!(matches!(t2u_speeds[..], [None, .., None]));
+        }
+        let t2u = MonotoneCubicSpline::with_slopes(u_grid, t2u_speeds, t2u_times, cyclic).map_err(
+            |e| {
+                use crate::monotonecubicspline::Error as Other;
+                use crate::utilities::GridError::*;
 
-            let fix_index = |mut idx| {
-                for &i in &missing_times {
-                    if idx >= i {
-                        idx += 1;
-                    } else {
-                        break;
+                let fix_index = |mut idx| {
+                    for &i in &missing_times {
+                        if idx >= i {
+                            idx += 1;
+                        } else {
+                            break;
+                        }
                     }
-                }
-                idx
-            };
+                    idx
+                };
 
-            match e {
-                // TODO: this might actually happen?
-                Other::LessThanTwoValues => unreachable!(),
-                Other::SlopesVsValues { .. } => unreachable!(),
-                Other::GridVsValues { .. } => unreachable!(),
-                Other::Decreasing => unreachable!(),
-                Other::FromGridError(e) => match e {
-                    GridNan { index } => FromNewGridError(
-                        GridNan {
-                            index: fix_index(index),
-                        }
-                        .into(),
-                    ),
-                    GridNotAscending { index } => FromNewGridError(
-                        GridNotAscending {
-                            index: fix_index(index),
-                        }
-                        .into(),
-                    ),
-                },
-                Other::SlopeTooSteep {
-                    index,
-                    slope,
-                    maximum,
-                } => TooFast {
-                    index: fix_index(index),
-                    speed: slope,
-                    maximum,
-                },
-                Other::NegativeSlope { index, slope } => NegativeSpeed {
-                    index: fix_index(index),
-                    speed: slope,
-                },
-            }
-        })?;
+                match e {
+                    // TODO: this might actually happen?
+                    Other::LessThanTwoValues => unreachable!(),
+                    Other::SlopesVsValues { .. } => unreachable!(),
+                    Other::GridVsValues { .. } => unreachable!(),
+                    Other::Decreasing => unreachable!(),
+                    Other::CyclicWithSlope { .. } => unreachable!(),
+                    Other::FromGridError(e) => match e {
+                        GridNan { index } => FromNewGridError(
+                            GridNan {
+                                index: fix_index(index),
+                            }
+                            .into(),
+                        ),
+                        GridNotAscending { index } => FromNewGridError(
+                            GridNotAscending {
+                                index: fix_index(index),
+                            }
+                            .into(),
+                        ),
+                    },
+                    Other::SlopeTooSteep {
+                        index,
+                        slope,
+                        maximum,
+                    } => TooFast {
+                        index: fix_index(index),
+                        speed: slope,
+                        maximum,
+                    },
+                    Other::NegativeSlope { index, slope } => NegativeSpeed {
+                        index: fix_index(index),
+                        speed: slope,
+                    },
+                }
+            },
+        )?;
         assert!(missing_times.len() == u_missing.len());
         for i in 0..missing_times.len() {
             if let Some(time) = t2u.get_time(u_missing[i]) {
