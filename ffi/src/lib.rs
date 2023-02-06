@@ -90,7 +90,7 @@ pub unsafe extern "C" fn asdf_asdfposspline3(
         .map(|&t| if t.is_nan() { None } else { Some(t) })
         .collect();
     let tcb = slice::from_raw_parts(tcb as *const [f32; 3], tcb_count);
-    AsdfPosSpline3::new(&positions, &times, &speeds, tcb, closed).into_box()
+    AsdfPosSpline3::new(positions, times, speeds, tcb, closed).into_box()
 }
 
 /// Frees an `AsdfPosSpline3`

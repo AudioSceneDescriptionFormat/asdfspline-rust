@@ -91,7 +91,7 @@ jobs:
           cargo fmt --all --check
       - name: clippy
         run: |
-          cargo clippy --all-targets --all-features -- -D warnings
+          cargo clippy --all-targets --all-features --workspace -- -D warnings
       - name: Build docs
         run: |
           cargo rustdoc --all-features -- -D warnings
@@ -112,4 +112,4 @@ jobs:
           toolchain: ${{ matrix.rust-version }}
       - name: Check whether it compiles
         run: |
-          cargo check --all-features --verbose
+          cargo check --all-features --workspace --verbose
