@@ -128,18 +128,13 @@ impl MonotoneCubicSpline {
                 values[values.len() - 1],
                 values[values.len() - 1] + (values[1] - values[0]),
             ];
-            let no_slopes = vec![None, None, None];
             let temp_grid = vec![
                 grid[grid.len() - 2],
                 grid[grid.len() - 1],
                 grid[grid.len() - 1] + (grid[1] - grid[0]),
             ];
-            let temp_spline = PiecewiseCubicCurve::new_shape_preserving_with_slopes(
-                temp_values,
-                no_slopes,
-                temp_grid,
-                closed,
-            )?;
+            let temp_spline =
+                PiecewiseCubicCurve::new_shape_preserving(temp_values, temp_grid, closed)?;
             let cyclic_slope = temp_spline.evaluate_velocity(temp_spline.grid()[1]);
             if let [ref mut first, .., ref mut last] = optional_slopes.to_mut()[..] {
                 *first = Some(cyclic_slope);
