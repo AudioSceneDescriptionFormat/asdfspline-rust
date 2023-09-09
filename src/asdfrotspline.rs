@@ -42,19 +42,18 @@ pub enum Error {
 impl From<crate::quaternion::centripetalkochanekbartelsspline::Error> for Error {
     fn from(err: crate::quaternion::centripetalkochanekbartelsspline::Error) -> Self {
         use crate::quaternion::centripetalkochanekbartelsspline::Error as Other;
-        use Error::*;
         match err {
-            Other::LessThanTwoQuaternions => LessThanTwoQuaternions,
+            Other::LessThanTwoQuaternions => Self::LessThanTwoQuaternions,
             Other::TcbVsQuaternions {
                 tcb,
                 quaternions,
                 closed,
-            } => TcbVsQuaternions {
+            } => Self::TcbVsQuaternions {
                 tcb,
                 quaternions,
                 closed,
             },
-            Other::RepeatedQuaternion { index } => RepeatedQuaternion { index },
+            Other::RepeatedQuaternion { index } => Self::RepeatedQuaternion { index },
         }
     }
 }
@@ -62,10 +61,9 @@ impl From<crate::quaternion::centripetalkochanekbartelsspline::Error> for Error 
 impl From<crate::utilities::GridError> for Error {
     fn from(err: crate::utilities::GridError) -> Self {
         use crate::utilities::GridError as Other;
-        use Error::*;
         match err {
-            Other::GridNan { index } => TimeNan { index },
-            Other::GridNotAscending { index } => TimesNotAscending { index },
+            Other::GridNan { index } => Self::TimeNan { index },
+            Other::GridNotAscending { index } => Self::TimesNotAscending { index },
         }
     }
 }
@@ -73,11 +71,12 @@ impl From<crate::utilities::GridError> for Error {
 impl From<crate::adapters::NewGridError> for Error {
     fn from(err: crate::adapters::NewGridError) -> Self {
         use crate::adapters::NewGridError as Other;
-        use Error::*;
         match err {
-            Other::FirstTimeMissing => FirstTimeMissing,
-            Other::LastTimeMissing => LastTimeMissing,
-            Other::DuplicateValueWithoutTime { index } => DuplicateQuaternionWithoutTime { index },
+            Other::FirstTimeMissing => Self::FirstTimeMissing,
+            Other::LastTimeMissing => Self::LastTimeMissing,
+            Other::DuplicateValueWithoutTime { index } => {
+                Self::DuplicateQuaternionWithoutTime { index }
+            }
             Other::FromGridError(e) => e.into(),
             Other::NewGridVsOldGrid { .. } => unreachable!(),
         }
@@ -96,12 +95,11 @@ impl AsdfRotSpline {
         tcb: impl AsRef<[[f32; 3]]>,
         closed: bool,
     ) -> Result<AsdfRotSpline, Error> {
-        use Error::*;
         let quaternions = quaternions.into();
         let times = times.as_ref();
         let tcb = tcb.as_ref();
         if quaternions.len() + closed as usize != times.len() {
-            return Err(TimesVsQuaternions {
+            return Err(Error::TimesVsQuaternions {
                 times: times.len(),
                 quaternions: quaternions.len(),
                 closed,

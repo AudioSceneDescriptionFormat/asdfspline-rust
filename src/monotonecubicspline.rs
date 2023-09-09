@@ -39,27 +39,26 @@ pub enum Error {
 impl From<crate::shapepreservingcubicspline::Error> for Error {
     fn from(e: crate::shapepreservingcubicspline::Error) -> Self {
         use crate::shapepreservingcubicspline::Error as Other;
-        use Error::*;
         match e {
-            Other::LessThanTwoValues => LessThanTwoValues,
-            Other::SlopesVsValues { slopes, values } => SlopesVsValues { slopes, values },
+            Other::LessThanTwoValues => Self::LessThanTwoValues,
+            Other::SlopesVsValues { slopes, values } => Self::SlopesVsValues { slopes, values },
             Other::GridVsValues {
                 grid,
                 values,
                 closed: false,
-            } => GridVsValues { grid, values },
+            } => Self::GridVsValues { grid, values },
             Other::GridVsValues { closed: true, .. } => unreachable!(),
             Other::FromGridError(e) => e.into(),
             Other::SlopeTooSteep {
                 index,
                 slope,
                 maximum,
-            } => SlopeTooSteep {
+            } => Self::SlopeTooSteep {
                 index,
                 slope,
                 maximum,
             },
-            Other::SlopeWrongSign { index, slope } => NegativeSlope { index, slope },
+            Other::SlopeWrongSign { index, slope } => Self::NegativeSlope { index, slope },
         }
     }
 }

@@ -55,15 +55,14 @@ pub enum Error {
 impl From<crate::centripetalkochanekbartelsspline::Error> for Error {
     fn from(err: crate::centripetalkochanekbartelsspline::Error) -> Self {
         use crate::centripetalkochanekbartelsspline::Error as Other;
-        use Error::*;
         match err {
-            Other::LessThanTwoPositions => LessThanTwoPositions,
-            Other::RepeatedPosition { index } => RepeatedPosition { index },
+            Other::LessThanTwoPositions => Self::LessThanTwoPositions,
+            Other::RepeatedPosition { index } => Self::RepeatedPosition { index },
             Other::TcbVsPositions {
                 tcb,
                 positions,
                 closed,
-            } => TcbVsPositions {
+            } => Self::TcbVsPositions {
                 tcb,
                 positions,
                 closed,
@@ -75,10 +74,9 @@ impl From<crate::centripetalkochanekbartelsspline::Error> for Error {
 impl From<crate::utilities::GridError> for Error {
     fn from(err: crate::utilities::GridError) -> Self {
         use crate::utilities::GridError as Other;
-        use Error::*;
         match err {
-            Other::GridNan { index } => TimeNan { index },
-            Other::GridNotAscending { index } => TimesNotAscending { index },
+            Other::GridNan { index } => Self::TimeNan { index },
+            Other::GridNotAscending { index } => Self::TimesNotAscending { index },
         }
     }
 }
@@ -86,11 +84,12 @@ impl From<crate::utilities::GridError> for Error {
 impl From<crate::adapters::NewGridError> for Error {
     fn from(err: crate::adapters::NewGridError) -> Self {
         use crate::adapters::NewGridError as Other;
-        use Error::*;
         match err {
-            Other::FirstTimeMissing => FirstTimeMissing,
-            Other::LastTimeMissing => LastTimeMissing,
-            Other::DuplicateValueWithoutTime { index } => DuplicatePositionWithoutTime { index },
+            Other::FirstTimeMissing => Self::FirstTimeMissing,
+            Other::LastTimeMissing => Self::LastTimeMissing,
+            Other::DuplicateValueWithoutTime { index } => {
+                Self::DuplicatePositionWithoutTime { index }
+            }
             Other::NewGridVsOldGrid { .. } => unreachable!(),
             Other::FromGridError(e) => e.into(),
         }
@@ -100,20 +99,19 @@ impl From<crate::adapters::NewGridError> for Error {
 impl From<crate::adapters::NewGridWithSpeedsError> for Error {
     fn from(err: crate::adapters::NewGridWithSpeedsError) -> Self {
         use crate::adapters::NewGridWithSpeedsError as Other;
-        use Error::*;
         match err {
             Other::FromNewGridError(e) => e.into(),
-            Other::SpeedWithoutTime { index } => SpeedWithoutTime { index },
+            Other::SpeedWithoutTime { index } => Self::SpeedWithoutTime { index },
             Other::TooFast {
                 index,
                 speed,
                 maximum,
-            } => TooFast {
+            } => Self::TooFast {
                 index,
                 speed,
                 maximum,
             },
-            Other::NegativeSpeed { index, speed } => NegativeSpeed { index, speed },
+            Other::NegativeSpeed { index, speed } => Self::NegativeSpeed { index, speed },
             Other::GridVsSpeeds { .. } => unreachable!(),
         }
     }

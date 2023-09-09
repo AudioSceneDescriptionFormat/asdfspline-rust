@@ -62,11 +62,13 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
                 x0 * 2.0 - x1 * 2.0 + v0 * delta + v1 * delta,
             ]);
         }
-        use crate::piecewisecubiccurve::Error as Other;
-        PiecewiseCubicCurve::new(segments, grid).map_err(|err| match err {
-            Other::ZeroSegments => unreachable!(),
-            Other::GridVsSegments { .. } => unreachable!(),
-            Other::FromGridError(e) => e.into(),
+        PiecewiseCubicCurve::new(segments, grid).map_err(|err| {
+            use crate::piecewisecubiccurve::Error as E;
+            match err {
+                E::ZeroSegments => unreachable!(),
+                E::GridVsSegments { .. } => unreachable!(),
+                E::FromGridError(e) => e.into(),
+            }
         })
     }
 }

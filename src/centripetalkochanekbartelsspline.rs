@@ -140,12 +140,12 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
                 unreachable!();
             }
         }
-        use crate::cubichermitespline::Error as Other;
+        use crate::cubichermitespline::Error as E;
         PiecewiseCubicCurve::new_hermite(positions, &tangents, &grid).map_err(|e| match e {
-            Other::LessThanTwoPositions => unreachable!(),
-            Other::TangentsVsSegments { .. } => unreachable!(),
-            Other::GridVsPositions { .. } => unreachable!(),
-            Other::FromGridError(..) => unreachable!(),
+            E::LessThanTwoPositions => unreachable!(),
+            E::TangentsVsSegments { .. } => unreachable!(),
+            E::GridVsPositions { .. } => unreachable!(),
+            E::FromGridError(..) => unreachable!(),
         })
     }
 }

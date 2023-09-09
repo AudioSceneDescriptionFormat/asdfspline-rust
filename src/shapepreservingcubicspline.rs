@@ -131,12 +131,14 @@ impl PiecewiseCubicCurve<f32> {
                 slopes.len(),
             )?);
         }
-        use crate::cubichermitespline::Error as Other;
-        PiecewiseCubicCurve::new_hermite(&values, &slopes, &grid).map_err(|e| match e {
-            Other::LessThanTwoPositions => unreachable!(),
-            Other::TangentsVsSegments { .. } => unreachable!(),
-            Other::GridVsPositions { .. } => unreachable!(),
-            Other::FromGridError(e) => e.into(),
+        PiecewiseCubicCurve::new_hermite(&values, &slopes, &grid).map_err(|e| {
+            use crate::cubichermitespline::Error as E;
+            match e {
+                E::LessThanTwoPositions => unreachable!(),
+                E::TangentsVsSegments { .. } => unreachable!(),
+                E::GridVsPositions { .. } => unreachable!(),
+                E::FromGridError(e) => e.into(),
+            }
         })
     }
 }

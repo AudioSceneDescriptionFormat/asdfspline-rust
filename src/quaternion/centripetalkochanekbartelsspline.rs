@@ -165,12 +165,14 @@ impl CubicDeCasteljau {
                 unreachable!();
             }
         }
-        use super::cubicdecasteljau::Error as Other;
-        CubicDeCasteljau::new(control_polygon, grid).map_err(|e| match e {
-            Other::GridTooShort => unreachable!(),
-            Other::GridVsControlPolygon { .. } => unreachable!(),
-            Other::GridNan { .. } => unreachable!(),
-            Other::GridNotAscending { .. } => unreachable!(),
+        CubicDeCasteljau::new(control_polygon, grid).map_err(|e| {
+            use super::cubicdecasteljau::Error as E;
+            match e {
+                E::GridTooShort => unreachable!(),
+                E::GridVsControlPolygon { .. } => unreachable!(),
+                E::GridNan { .. } => unreachable!(),
+                E::GridNotAscending { .. } => unreachable!(),
+            }
         })
     }
 }

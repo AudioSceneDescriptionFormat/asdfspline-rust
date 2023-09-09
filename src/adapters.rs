@@ -214,9 +214,6 @@ where
         }
         let t2u = MonotoneCubicSpline::with_slopes(u_grid, t2u_speeds, t2u_times, cyclic).map_err(
             |e| {
-                use crate::monotonecubicspline::Error as Other;
-                use crate::utilities::GridError::*;
-
                 let fix_index = |mut idx| {
                     for &i in &missing_times {
                         if idx >= i {
@@ -228,28 +225,23 @@ where
                     idx
                 };
 
+                use crate::monotonecubicspline::Error as E;
                 match e {
                     // TODO: this might actually happen?
-                    Other::LessThanTwoValues => unreachable!(),
-                    Other::SlopesVsValues { .. } => unreachable!(),
-                    Other::GridVsValues { .. } => unreachable!(),
-                    Other::Decreasing => unreachable!(),
-                    Other::CyclicWithSlope { .. } => unreachable!(),
-                    Other::FromGridError(e) => match e {
-                        GridNan { index } => FromNewGridError(
-                            GridNan {
-                                index: fix_index(index),
-                            }
-                            .into(),
-                        ),
-                        GridNotAscending { index } => FromNewGridError(
-                            GridNotAscending {
-                                index: fix_index(index),
-                            }
-                            .into(),
-                        ),
-                    },
-                    Other::SlopeTooSteep {
+                    E::LessThanTwoValues => unreachable!(),
+                    E::SlopesVsValues { .. } => unreachable!(),
+                    E::GridVsValues { .. } => unreachable!(),
+                    E::Decreasing => unreachable!(),
+                    E::CyclicWithSlope { .. } => unreachable!(),
+                    E::FromGridError(mut e) => {
+                        use crate::utilities::GridError::*;
+                        match e {
+                            GridNan { ref mut index } => *index = fix_index(*index),
+                            GridNotAscending { ref mut index } => *index = fix_index(*index),
+                        };
+                        NewGridError::from(e).into()
+                    }
+                    E::SlopeTooSteep {
                         index,
                         slope,
                         maximum,
@@ -258,7 +250,7 @@ where
                         speed: slope,
                         maximum,
                     },
-                    Other::NegativeSlope { index, slope } => NegativeSpeed {
+                    E::NegativeSlope { index, slope } => NegativeSpeed {
                         index: fix_index(index),
                         speed: slope,
                     },

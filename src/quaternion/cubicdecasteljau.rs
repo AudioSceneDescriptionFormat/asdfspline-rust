@@ -19,11 +19,10 @@ pub enum Error {
 }
 
 impl From<GridError> for Error {
-    fn from(e: GridError) -> Error {
-        use Error::*;
+    fn from(e: GridError) -> Self {
         match e {
-            GridError::GridNan { index } => GridNan { index },
-            GridError::GridNotAscending { index } => GridNotAscending { index },
+            GridError::GridNan { index } => Self::GridNan { index },
+            GridError::GridNotAscending { index } => Self::GridNotAscending { index },
         }
     }
 }
