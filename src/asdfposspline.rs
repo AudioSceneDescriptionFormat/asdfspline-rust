@@ -52,71 +52,6 @@ pub enum Error {
     NegativeSpeed { index: usize, speed: f32 },
 }
 
-impl From<crate::centripetalkochanekbartelsspline::Error> for Error {
-    fn from(err: crate::centripetalkochanekbartelsspline::Error) -> Self {
-        use crate::centripetalkochanekbartelsspline::Error as Other;
-        match err {
-            Other::LessThanTwoPositions => Self::LessThanTwoPositions,
-            Other::RepeatedPosition { index } => Self::RepeatedPosition { index },
-            Other::TcbVsPositions {
-                tcb,
-                positions,
-                closed,
-            } => Self::TcbVsPositions {
-                tcb,
-                positions,
-                closed,
-            },
-        }
-    }
-}
-
-impl From<crate::utilities::GridError> for Error {
-    fn from(err: crate::utilities::GridError) -> Self {
-        use crate::utilities::GridError as Other;
-        match err {
-            Other::GridNan { index } => Self::TimeNan { index },
-            Other::GridNotAscending { index } => Self::TimesNotAscending { index },
-        }
-    }
-}
-
-impl From<crate::adapters::NewGridError> for Error {
-    fn from(err: crate::adapters::NewGridError) -> Self {
-        use crate::adapters::NewGridError as Other;
-        match err {
-            Other::FirstTimeMissing => Self::FirstTimeMissing,
-            Other::LastTimeMissing => Self::LastTimeMissing,
-            Other::DuplicateValueWithoutTime { index } => {
-                Self::DuplicatePositionWithoutTime { index }
-            }
-            Other::NewGridVsOldGrid { .. } => unreachable!(),
-            Other::FromGridError(e) => e.into(),
-        }
-    }
-}
-
-impl From<crate::adapters::NewGridWithSpeedsError> for Error {
-    fn from(err: crate::adapters::NewGridWithSpeedsError) -> Self {
-        use crate::adapters::NewGridWithSpeedsError as Other;
-        match err {
-            Other::FromNewGridError(e) => e.into(),
-            Other::SpeedWithoutTime { index } => Self::SpeedWithoutTime { index },
-            Other::TooFast {
-                index,
-                speed,
-                maximum,
-            } => Self::TooFast {
-                index,
-                speed,
-                maximum,
-            },
-            Other::NegativeSpeed { index, speed } => Self::NegativeSpeed { index, speed },
-            Other::GridVsSpeeds { .. } => unreachable!(),
-        }
-    }
-}
-
 pub type AsdfPosSpline<V, U> =
     NewGridAdapter<V, ConstantSpeedAdapter<V, V, PiecewiseCubicCurve<V>, U>>;
 
@@ -154,14 +89,59 @@ where
             tcb,
             closed,
             NormWrapper::norm,
-        )?;
+        )
+        .map_err(|e| {
+            use crate::centripetalkochanekbartelsspline::Error as E;
+            match e {
+                E::LessThanTwoPositions => LessThanTwoPositions,
+                E::RepeatedPosition { index } => RepeatedPosition { index },
+                E::TcbVsPositions {
+                    tcb,
+                    positions,
+                    closed,
+                } => TcbVsPositions {
+                    tcb,
+                    positions,
+                    closed,
+                },
+            }
+        })?;
         let constant_speed = ConstantSpeedAdapter::adapt(path);
-        Ok(NewGridAdapter::adapt_with_speeds(
-            constant_speed,
-            times,
-            speeds,
-            closed,
-        )?)
+        NewGridAdapter::adapt_with_speeds(constant_speed, times, speeds, closed).map_err(|e| {
+            use crate::adapters::NewGridWithSpeedsError as E;
+            match e {
+                E::FromNewGridError(e) => {
+                    use crate::adapters::NewGridError as E;
+                    match e {
+                        E::FirstTimeMissing => FirstTimeMissing,
+                        E::LastTimeMissing => LastTimeMissing,
+                        E::DuplicateValueWithoutTime { index } => {
+                            DuplicatePositionWithoutTime { index }
+                        }
+                        E::NewGridVsOldGrid { .. } => unreachable!(),
+                        E::FromGridError(e) => {
+                            use crate::utilities::GridError as E;
+                            match e {
+                                E::GridNan { index } => TimeNan { index },
+                                E::GridNotAscending { index } => TimesNotAscending { index },
+                            }
+                        }
+                    }
+                }
+                E::SpeedWithoutTime { index } => SpeedWithoutTime { index },
+                E::TooFast {
+                    index,
+                    speed,
+                    maximum,
+                } => TooFast {
+                    index,
+                    speed,
+                    maximum,
+                },
+                E::NegativeSpeed { index, speed } => NegativeSpeed { index, speed },
+                E::GridVsSpeeds { .. } => unreachable!(),
+            }
+        })
     }
 }
 
