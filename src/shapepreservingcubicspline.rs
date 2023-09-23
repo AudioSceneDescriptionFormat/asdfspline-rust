@@ -81,24 +81,18 @@ impl PiecewiseCubicCurve<f32> {
         }
         let mut slopes = Vec::new();
         for i in 0..values.len() - 2 {
-            let x_1 = values[i];
-            let x0 = values[i + 1];
-            let x1 = values[i + 2];
-            let t_1 = grid[i];
-            let t0 = grid[i + 1];
-            let t1 = grid[i + 2];
-            let left = (x0 - x_1) / (t0 - t_1);
-            let right = (x1 - x0) / (t1 - t0);
-            let slope = match optional_slopes[(i + 1) % optional_slopes.len()] {
-                Some(slope) => verify_slope(slope, left, right, i + 1)?,
-                None => fix_slope(
-                    ((x0 - x_1) / (t0 - t_1) + (x1 - x0) / (t1 - t0)) / 2.0,
-                    left,
-                    right,
-                ),
-            };
-            slopes.push(slope); // incoming
-            slopes.push(slope); // outgoing
+            if let ([x_1, x0, x1, ..], [t_1, t0, t1, ..]) = (&values[i..], &grid[i..]) {
+                let left = (x0 - x_1) / (t0 - t_1);
+                let right = (x1 - x0) / (t1 - t0);
+                let slope = match optional_slopes[(i + 1) % optional_slopes.len()] {
+                    Some(slope) => verify_slope(slope, left, right, i + 1)?,
+                    None => fix_slope((left + right) / 2.0, left, right),
+                };
+                slopes.push(slope); // incoming
+                slopes.push(slope); // outgoing
+            } else {
+                unreachable!();
+            }
         }
         if closed {
             // Move last (outgoing) tangent to the beginning:
