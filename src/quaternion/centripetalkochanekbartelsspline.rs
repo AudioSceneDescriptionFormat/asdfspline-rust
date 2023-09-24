@@ -170,8 +170,7 @@ impl CubicDeCasteljau {
             match e {
                 E::GridTooShort => unreachable!(),
                 E::GridVsControlPolygon { .. } => unreachable!(),
-                E::GridNan { .. } => unreachable!(),
-                E::GridNotAscending { .. } => unreachable!(),
+                E::FromGridError(_) => unreachable!(),
             }
         })
     }

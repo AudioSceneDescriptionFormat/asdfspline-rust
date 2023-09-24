@@ -12,19 +12,8 @@ pub enum Error {
         ({grid} + 2 * ({grid} - 1) = {} != {control_polygon})",
         .grid + 2 * (.grid - 1))]
     GridVsControlPolygon { grid: usize, control_polygon: usize },
-    #[error("index {index}: NaN values are not allowed in grid")]
-    GridNan { index: usize },
-    #[error("index {index}: grid values must be strictly ascending")]
-    GridNotAscending { index: usize },
-}
-
-impl From<GridError> for Error {
-    fn from(e: GridError) -> Self {
-        match e {
-            GridError::GridNan { index } => Self::GridNan { index },
-            GridError::GridNotAscending { index } => Self::GridNotAscending { index },
-        }
-    }
+    #[error(transparent)]
+    FromGridError(#[from] GridError),
 }
 
 pub struct CubicDeCasteljau {

@@ -39,50 +39,6 @@ pub enum Error {
     RepeatedQuaternion { index: usize },
 }
 
-impl From<crate::quaternion::centripetalkochanekbartelsspline::Error> for Error {
-    fn from(err: crate::quaternion::centripetalkochanekbartelsspline::Error) -> Self {
-        use crate::quaternion::centripetalkochanekbartelsspline::Error as Other;
-        match err {
-            Other::LessThanTwoQuaternions => Self::LessThanTwoQuaternions,
-            Other::TcbVsQuaternions {
-                tcb,
-                quaternions,
-                closed,
-            } => Self::TcbVsQuaternions {
-                tcb,
-                quaternions,
-                closed,
-            },
-            Other::RepeatedQuaternion { index } => Self::RepeatedQuaternion { index },
-        }
-    }
-}
-
-impl From<crate::utilities::GridError> for Error {
-    fn from(err: crate::utilities::GridError) -> Self {
-        use crate::utilities::GridError as Other;
-        match err {
-            Other::GridNan { index } => Self::TimeNan { index },
-            Other::GridNotAscending { index } => Self::TimesNotAscending { index },
-        }
-    }
-}
-
-impl From<crate::adapters::NewGridError> for Error {
-    fn from(err: crate::adapters::NewGridError) -> Self {
-        use crate::adapters::NewGridError as Other;
-        match err {
-            Other::FirstGridMissing => Self::FirstTimeMissing,
-            Other::LastGridMissing => Self::LastTimeMissing,
-            Other::DuplicateValueWithoutGrid { index } => {
-                Self::DuplicateQuaternionWithoutTime { index }
-            }
-            Other::FromGridError(e) => e.into(),
-            Other::NewGridVsOldGrid { .. } => unreachable!(),
-        }
-    }
-}
-
 pub type AsdfRotSpline = NewGridAdapter<
     UnitQuaternion,
     ConstantSpeedAdapter<UnitQuaternion, Vec3, CubicDeCasteljau, AngularVelocityNorm>,
@@ -95,18 +51,50 @@ impl AsdfRotSpline {
         tcb: impl AsRef<[[f32; 3]]>,
         closed: bool,
     ) -> Result<AsdfRotSpline, Error> {
+        use Error::*;
         let quaternions = quaternions.into();
         let times = times.as_ref();
         let tcb = tcb.as_ref();
         if quaternions.len() + closed as usize != times.len() {
-            return Err(Error::TimesVsQuaternions {
+            return Err(TimesVsQuaternions {
                 times: times.len(),
                 quaternions: quaternions.len(),
                 closed,
             });
         }
-        let path = CubicDeCasteljau::new_centripetal_kochanek_bartels(quaternions, tcb, closed)?;
+        let path = CubicDeCasteljau::new_centripetal_kochanek_bartels(quaternions, tcb, closed)
+            .map_err(|e| {
+                use crate::quaternion::centripetalkochanekbartelsspline::Error as E;
+                match e {
+                    E::LessThanTwoQuaternions => LessThanTwoQuaternions,
+                    E::TcbVsQuaternions {
+                        tcb,
+                        quaternions,
+                        closed,
+                    } => TcbVsQuaternions {
+                        tcb,
+                        quaternions,
+                        closed,
+                    },
+                    E::RepeatedQuaternion { index } => RepeatedQuaternion { index },
+                }
+            })?;
         let constant_speed = ConstantSpeedAdapter::adapt(path);
-        Ok(NewGridAdapter::adapt(constant_speed, times, closed)?)
+        NewGridAdapter::adapt(constant_speed, times, closed).map_err(|e| {
+            use crate::adapters::NewGridError as E;
+            match e {
+                E::FirstGridMissing => FirstTimeMissing,
+                E::LastGridMissing => LastTimeMissing,
+                E::DuplicateValueWithoutGrid { index } => DuplicateQuaternionWithoutTime { index },
+                E::FromGridError(e) => {
+                    use crate::utilities::GridError as E;
+                    match e {
+                        E::GridNan { index } => TimeNan { index },
+                        E::GridNotAscending { index } => TimesNotAscending { index },
+                    }
+                }
+                E::NewGridVsOldGrid { .. } => unreachable!(),
+            }
+        })
     }
 }
