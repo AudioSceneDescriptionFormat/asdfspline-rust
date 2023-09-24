@@ -5,7 +5,6 @@ use superslice::Ext; // for slice::equal_range_by()
 use crate::utilities::{bisect, check_grid, GridError};
 use crate::PiecewiseCubicCurve;
 use crate::Spline;
-use crate::SplineWithVelocity;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -123,19 +122,17 @@ impl MonotoneCubicSpline {
                 }
                 [] | [_] => unreachable!(),
             }
-            let temp_values = vec![
-                values[values.len() - 2],
-                values[values.len() - 1],
-                values[values.len() - 1] + (values[1] - values[0]),
-            ];
-            let temp_grid = vec![
-                grid[grid.len() - 2],
-                grid[grid.len() - 1],
-                grid[grid.len() - 1] + (grid[1] - grid[0]),
-            ];
-            let temp_spline =
-                PiecewiseCubicCurve::new_shape_preserving(temp_values, temp_grid, closed)?;
-            let cyclic_slope = temp_spline.evaluate_velocity(temp_spline.grid()[1]);
+            let x_1 = values[values.len() - 2];
+            let x0 = values[values.len() - 1];
+            let x1 = values[values.len() - 1] + (values[1] - values[0]);
+            let t_1 = grid[grid.len() - 2];
+            let t0 = grid[grid.len() - 1];
+            let t1 = grid[grid.len() - 1] + (grid[1] - grid[0]);
+            let left = (x0 - x_1) / (t0 - t_1);
+            let right = (x1 - x0) / (t1 - t0);
+            use crate::shapepreservingcubicspline::{catmull_rom_slope, fix_slope};
+            let cyclic_slope =
+                fix_slope(catmull_rom_slope([x_1, x0, x1], [t_1, t0, t1]), left, right);
             if let [ref mut first, .., ref mut last] = optional_slopes.to_mut()[..] {
                 *first = Some(cyclic_slope);
                 *last = Some(cyclic_slope);

@@ -81,12 +81,12 @@ impl PiecewiseCubicCurve<f32> {
         }
         let mut slopes = Vec::new();
         for i in 0..values.len() - 2 {
-            if let ([x_1, x0, x1, ..], [t_1, t0, t1, ..]) = (&values[i..], &grid[i..]) {
+            if let (&[x_1, x0, x1, ..], &[t_1, t0, t1, ..]) = (&values[i..], &grid[i..]) {
                 let left = (x0 - x_1) / (t0 - t_1);
                 let right = (x1 - x0) / (t1 - t0);
                 let slope = match optional_slopes[(i + 1) % optional_slopes.len()] {
                     Some(slope) => verify_slope(slope, left, right, i + 1)?,
-                    None => fix_slope((left + right) / 2.0, left, right),
+                    None => fix_slope(catmull_rom_slope([x_1, x0, x1], [t_1, t0, t1]), left, right),
                 };
                 slopes.push(slope); // incoming
                 slopes.push(slope); // outgoing
@@ -137,6 +137,12 @@ impl PiecewiseCubicCurve<f32> {
     }
 }
 
+pub(crate) fn catmull_rom_slope([x_1, x0, x1]: [f32; 3], [t_1, t0, t1]: [f32; 3]) -> f32 {
+    let v0 = (x1 - x0) / (t1 - t0);
+    let v_1 = (x0 - x_1) / (t0 - t_1);
+    ((t1 - t0) * v_1 + (t0 - t_1) * v0) / (t1 - t_1)
+}
+
 fn calculate_slope(
     main: Option<f32>,
     other: Option<f32>,
@@ -177,7 +183,7 @@ fn verify_slope(slope: f32, left: f32, right: f32, index: usize) -> Result<f32, 
 
 /// Manipulate the slope to preserve shape.
 /// See Dougherty et al. (1989), eq. (4.2).
-fn fix_slope(slope: f32, left: f32, right: f32) -> f32 {
+pub(crate) fn fix_slope(slope: f32, left: f32, right: f32) -> f32 {
     if left * right <= 0.0 {
         0.0
     } else if right > 0.0 {
