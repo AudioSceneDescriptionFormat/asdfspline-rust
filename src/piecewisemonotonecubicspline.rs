@@ -1,9 +1,8 @@
 use crate::utilities::{check_grid, GridError};
 use crate::PiecewiseCubicCurve;
 
-// TODO: Two error types? One doesn't need "slopes" errors.
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum PiecewiseMonotoneError {
     #[error("there must be at least two values")]
     LessThanTwoValues,
     #[error("length of grid ({grid}) must be {} number of values ({values})", if *.closed {
@@ -18,6 +17,12 @@ pub enum Error {
     },
     #[error(transparent)]
     FromGridError(#[from] GridError),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum PiecewiseMonotoneWithSlopesError {
+    #[error(transparent)]
+    FromPiecewiseMonotoneError(#[from] PiecewiseMonotoneError),
     #[error("number of slopes ({slopes}) must be same as number of values ({values})")]
     SlopesVsValues { slopes: usize, values: usize },
     #[error("slope at index {index} too steep ({slope:?}; maximum: {maximum:?})")]
@@ -35,10 +40,14 @@ impl PiecewiseCubicCurve<f32> {
         values: impl Into<Vec<f32>>,
         grid: impl Into<Vec<f32>>,
         closed: bool,
-    ) -> Result<PiecewiseCubicCurve<f32>, Error> {
+    ) -> Result<PiecewiseCubicCurve<f32>, PiecewiseMonotoneError> {
         let values = values.into();
         let slopes = vec![None; values.len()];
         PiecewiseCubicCurve::new_piecewise_monotone_with_slopes(values, slopes, grid, closed)
+            .map_err(|e| match e {
+                PiecewiseMonotoneWithSlopesError::FromPiecewiseMonotoneError(e) => e,
+                _ => unreachable!(),
+            })
     }
 }
 
@@ -48,13 +57,14 @@ impl PiecewiseCubicCurve<f32> {
         optional_slopes: impl AsRef<[Option<f32>]>,
         grid: impl Into<Vec<f32>>,
         closed: bool,
-    ) -> Result<PiecewiseCubicCurve<f32>, Error> {
-        use Error::*;
+    ) -> Result<PiecewiseCubicCurve<f32>, PiecewiseMonotoneWithSlopesError> {
+        use PiecewiseMonotoneError::*;
+        use PiecewiseMonotoneWithSlopesError::*;
         let mut values = values.into();
         let optional_slopes = optional_slopes.as_ref();
         let mut grid = grid.into();
         if values.len() < 2 {
-            return Err(LessThanTwoValues);
+            return Err(LessThanTwoValues.into());
         }
         if values.len() != optional_slopes.len() {
             return Err(SlopesVsValues {
@@ -67,9 +77,10 @@ impl PiecewiseCubicCurve<f32> {
                 grid: grid.len(),
                 values: values.len(),
                 closed,
-            });
+            }
+            .into());
         }
-        check_grid(&grid)?;
+        check_grid(&grid).map_err(FromGridError)?;
         if closed {
             values.reserve_exact(2);
             grid.reserve_exact(1);
@@ -131,7 +142,7 @@ impl PiecewiseCubicCurve<f32> {
                 E::LessThanTwoPositions => unreachable!(),
                 E::TangentsVsSegments { .. } => unreachable!(),
                 E::GridVsPositions { .. } => unreachable!(),
-                E::FromGridError(e) => e.into(),
+                E::FromGridError(e) => FromGridError(e).into(),
             }
         })
     }
@@ -148,7 +159,7 @@ fn calculate_slope(
     other: Option<f32>,
     chord: f32,
     index: usize,
-) -> Result<f32, Error> {
+) -> Result<f32, PiecewiseMonotoneWithSlopesError> {
     if let Some(main) = main {
         Ok(verify_slope(main, chord, chord, index)?)
     } else if let Some(other) = other {
@@ -158,22 +169,28 @@ fn calculate_slope(
     }
 }
 
-fn verify_slope(slope: f32, left: f32, right: f32, index: usize) -> Result<f32, Error> {
+fn verify_slope(
+    slope: f32,
+    left: f32,
+    right: f32,
+    index: usize,
+) -> Result<f32, PiecewiseMonotoneWithSlopesError> {
+    use PiecewiseMonotoneWithSlopesError::*;
     let fixed_slope = fix_slope(slope, left, right);
     #[allow(clippy::float_cmp)]
     if fixed_slope == slope {
         Ok(slope)
     } else if left * right < 0.0 {
         assert!(fixed_slope == 0.0);
-        Err(Error::SlopeTooSteep {
+        Err(SlopeTooSteep {
             index,
             slope,
             maximum: 0.0,
         })
     } else if left * slope < 0.0 {
-        Err(Error::SlopeWrongSign { index, slope })
+        Err(SlopeWrongSign { index, slope })
     } else {
-        Err(Error::SlopeTooSteep {
+        Err(SlopeTooSteep {
             index,
             slope,
             maximum: fixed_slope,

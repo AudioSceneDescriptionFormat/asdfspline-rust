@@ -225,22 +225,29 @@ where
                     idx
                 };
 
-                use crate::monotonecubicspline::Error as E;
+                use crate::monotonecubicspline::MonotoneWithSlopesError as E;
                 match e {
-                    // TODO: this might actually happen?
-                    E::LessThanTwoValues => unreachable!(),
-                    E::SlopesVsValues { .. } => unreachable!(),
-                    E::GridVsValues { .. } => unreachable!(),
-                    E::Decreasing => unreachable!(),
-                    E::CyclicWithSlope { .. } => unreachable!(),
-                    E::FromGridError(mut e) => {
-                        use crate::utilities::GridError::*;
+                    E::FromMonotoneError(e) => {
+                        use crate::monotonecubicspline::MonotoneError as E;
                         match e {
-                            GridNan { ref mut index } => *index = fix_index(*index),
-                            GridNotAscending { ref mut index } => *index = fix_index(*index),
-                        };
-                        NewGridError::from(e).into()
+                            // TODO: this might actually happen?
+                            E::LessThanTwoValues => unreachable!(),
+                            E::GridVsValues { .. } => unreachable!(),
+                            E::Decreasing => unreachable!(),
+                            E::FromGridError(mut e) => {
+                                use crate::utilities::GridError::*;
+                                match e {
+                                    GridNan { ref mut index } => *index = fix_index(*index),
+                                    GridNotAscending { ref mut index } => {
+                                        *index = fix_index(*index)
+                                    }
+                                };
+                                NewGridError::from(e).into()
+                            }
+                        }
                     }
+                    E::SlopesVsValues { .. } => unreachable!(),
+                    E::CyclicWithSlope { .. } => unreachable!(),
                     E::SlopeTooSteep {
                         index,
                         slope,

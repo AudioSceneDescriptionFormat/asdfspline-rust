@@ -7,17 +7,23 @@ use crate::PiecewiseCubicCurve;
 use crate::Spline;
 
 #[derive(thiserror::Error, Debug)]
-pub enum Error {
+pub enum MonotoneError {
     #[error("values must not be decreasing")]
     Decreasing,
     #[error("there must be at least two values")]
     LessThanTwoValues,
-    #[error("number of slopes ({slopes}) must be same as values ({values})")]
-    SlopesVsValues { slopes: usize, values: usize },
     #[error("length of grid ({grid}) must be the same as number of values ({values})")]
     GridVsValues { grid: usize, values: usize },
     #[error(transparent)]
     FromGridError(#[from] GridError),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum MonotoneWithSlopesError {
+    #[error(transparent)]
+    FromMonotoneError(#[from] MonotoneError),
+    #[error("number of slopes ({slopes}) must be same as values ({values})")]
+    SlopesVsValues { slopes: usize, values: usize },
     #[error("slope at index {index} too steep ({slope:?}; maximum: {maximum:?})")]
     SlopeTooSteep {
         index: usize,
@@ -35,33 +41,6 @@ pub enum Error {
     },
 }
 
-impl From<crate::piecewisemonotonecubicspline::Error> for Error {
-    fn from(e: crate::piecewisemonotonecubicspline::Error) -> Self {
-        use crate::piecewisemonotonecubicspline::Error as Other;
-        match e {
-            Other::LessThanTwoValues => Self::LessThanTwoValues,
-            Other::SlopesVsValues { slopes, values } => Self::SlopesVsValues { slopes, values },
-            Other::GridVsValues {
-                grid,
-                values,
-                closed: false,
-            } => Self::GridVsValues { grid, values },
-            Other::GridVsValues { closed: true, .. } => unreachable!(),
-            Other::FromGridError(e) => e.into(),
-            Other::SlopeTooSteep {
-                index,
-                slope,
-                maximum,
-            } => Self::SlopeTooSteep {
-                index,
-                slope,
-                maximum,
-            },
-            Other::SlopeWrongSign { index, slope } => Self::NegativeSlope { index, slope },
-        }
-    }
-}
-
 /// ... monotonically *increasing* ...
 pub struct MonotoneCubicSpline {
     inner: PiecewiseCubicCurve<f32>,
@@ -73,10 +52,13 @@ impl MonotoneCubicSpline {
         values: impl Into<Box<[f32]>>,
         grid: impl Into<Vec<f32>>,
         cyclic: bool,
-    ) -> Result<MonotoneCubicSpline, Error> {
+    ) -> Result<MonotoneCubicSpline, MonotoneError> {
         let values = values.into();
         let slopes = vec![None; values.len()];
-        MonotoneCubicSpline::with_slopes(values, slopes, grid, cyclic)
+        MonotoneCubicSpline::with_slopes(values, slopes, grid, cyclic).map_err(|e| match e {
+            MonotoneWithSlopesError::FromMonotoneError(e) => e,
+            _ => unreachable!(),
+        })
     }
 
     pub fn with_slopes<'a>(
@@ -84,20 +66,21 @@ impl MonotoneCubicSpline {
         optional_slopes: impl Into<Cow<'a, [Option<f32>]>>,
         grid: impl Into<Vec<f32>>,
         cyclic: bool,
-    ) -> Result<MonotoneCubicSpline, Error> {
-        use Error::*;
+    ) -> Result<MonotoneCubicSpline, MonotoneWithSlopesError> {
+        use MonotoneError::*;
+        use MonotoneWithSlopesError::*;
         let values = values.into();
         let mut optional_slopes = optional_slopes.into();
         let grid = grid.into();
         // TODO: use is_sorted() once it is stabilized
         //if !values.is_sorted() {
         if values.windows(2).any(|w| w[0] > w[1]) {
-            return Err(Decreasing);
+            return Err(Decreasing.into());
         }
 
         // TODO: code re-use with new_piecewise_monotone_with_slopes()?
         if values.len() < 2 {
-            return Err(LessThanTwoValues);
+            return Err(LessThanTwoValues.into());
         }
         if values.len() != optional_slopes.len() {
             return Err(SlopesVsValues {
@@ -109,9 +92,10 @@ impl MonotoneCubicSpline {
             return Err(GridVsValues {
                 grid: grid.len(),
                 values: values.len(),
-            });
+            }
+            .into());
         }
-        check_grid(&grid)?;
+        check_grid(&grid).map_err(FromGridError)?;
 
         let closed = false;
         if cyclic {
@@ -146,7 +130,38 @@ impl MonotoneCubicSpline {
                 optional_slopes,
                 grid,
                 closed,
-            )?,
+            )
+            .map_err(|e| {
+                use crate::piecewisemonotonecubicspline::PiecewiseMonotoneWithSlopesError as E;
+                match e {
+                    E::FromPiecewiseMonotoneError(e) => {
+                        use crate::piecewisemonotonecubicspline::PiecewiseMonotoneError as E;
+                        match e {
+                            E::LessThanTwoValues => LessThanTwoValues,
+
+                            E::GridVsValues {
+                                grid,
+                                values,
+                                closed: false,
+                            } => GridVsValues { grid, values },
+                            E::GridVsValues { closed: true, .. } => unreachable!(),
+                            E::FromGridError(e) => e.into(),
+                        }
+                        .into()
+                    }
+                    E::SlopesVsValues { slopes, values } => SlopesVsValues { slopes, values },
+                    E::SlopeTooSteep {
+                        index,
+                        slope,
+                        maximum,
+                    } => SlopeTooSteep {
+                        index,
+                        slope,
+                        maximum,
+                    },
+                    E::SlopeWrongSign { index, slope } => NegativeSlope { index, slope },
+                }
+            })?,
             values,
         })
     }
