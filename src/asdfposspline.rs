@@ -113,9 +113,9 @@ where
                 E::FromNewGridError(e) => {
                     use crate::adapters::NewGridError as E;
                     match e {
-                        E::FirstTimeMissing => FirstTimeMissing,
-                        E::LastTimeMissing => LastTimeMissing,
-                        E::DuplicateValueWithoutTime { index } => {
+                        E::FirstGridMissing => FirstTimeMissing,
+                        E::LastGridMissing => LastTimeMissing,
+                        E::DuplicateValueWithoutGrid { index } => {
                             DuplicatePositionWithoutTime { index }
                         }
                         E::NewGridVsOldGrid { .. } => unreachable!(),
@@ -128,7 +128,7 @@ where
                         }
                     }
                 }
-                E::SpeedWithoutTime { index } => SpeedWithoutTime { index },
+                E::SpeedWithoutGrid { index } => SpeedWithoutTime { index },
                 E::TooFast {
                     index,
                     speed,

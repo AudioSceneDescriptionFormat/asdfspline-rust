@@ -72,9 +72,9 @@ impl From<crate::adapters::NewGridError> for Error {
     fn from(err: crate::adapters::NewGridError) -> Self {
         use crate::adapters::NewGridError as Other;
         match err {
-            Other::FirstTimeMissing => Self::FirstTimeMissing,
-            Other::LastTimeMissing => Self::LastTimeMissing,
-            Other::DuplicateValueWithoutTime { index } => {
+            Other::FirstGridMissing => Self::FirstTimeMissing,
+            Other::LastGridMissing => Self::LastTimeMissing,
+            Other::DuplicateValueWithoutGrid { index } => {
                 Self::DuplicateQuaternionWithoutTime { index }
             }
             Other::FromGridError(e) => e.into(),

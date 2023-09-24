@@ -88,12 +88,12 @@ where
 pub enum NewGridError {
     #[error("length of new grid ({new}) must be same as old grid ({old})")]
     NewGridVsOldGrid { new: usize, old: usize },
-    #[error("first time value must be specified")]
-    FirstTimeMissing,
-    #[error("last time value must be specified")]
-    LastTimeMissing,
-    #[error("index {index}: duplicate value without time")]
-    DuplicateValueWithoutTime { index: usize },
+    #[error("first grid value must be specified")]
+    FirstGridMissing,
+    #[error("last grid value must be specified")]
+    LastGridMissing,
+    #[error("index {index}: duplicate value without corresponding grid value")]
+    DuplicateValueWithoutGrid { index: usize },
     #[error(transparent)]
     FromGridError(#[from] GridError),
 }
@@ -112,8 +112,8 @@ pub enum NewGridWithSpeedsError {
         speeds: usize,
         closed: bool,
     },
-    #[error("index {index}: speed is only allowed if time is given")]
-    SpeedWithoutTime { index: usize },
+    #[error("index {index}: speed is only allowed if corresponding grid value is given")]
+    SpeedWithoutGrid { index: usize },
     #[error("speed at index {index} too fast ({speed:?}; maximum: {maximum:?})")]
     TooFast {
         index: usize,
@@ -172,7 +172,7 @@ where
         if let Some(time) = new_grid[0] {
             t2u_times.push(time);
         } else {
-            return Err(FirstTimeMissing.into());
+            return Err(FirstGridMissing.into());
         }
         t2u_speeds.push(speeds[0]);
         for i in 1..speeds.len() {
@@ -183,7 +183,7 @@ where
             } else if speed.is_none() {
                 missing_times.push(i);
             } else {
-                return Err(SpeedWithoutTime { index: i });
+                return Err(SpeedWithoutGrid { index: i });
             }
         }
         if let Some(last_time) = *new_grid.last().unwrap() {
@@ -194,7 +194,7 @@ where
                 // The last values have already been pushed in the for-loop above.
             }
         } else {
-            return Err(LastTimeMissing.into());
+            return Err(LastGridMissing.into());
         }
 
         let mut u_grid = Vec::new();
@@ -269,7 +269,7 @@ where
             if let Some(time) = t2u.get_time(u_missing[i]) {
                 grid.insert(missing_times[i], time);
             } else {
-                return Err(DuplicateValueWithoutTime { index: i }.into());
+                return Err(DuplicateValueWithoutGrid { index: i }.into());
             }
         }
         let t2u = t2u.into_inner();
