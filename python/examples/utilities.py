@@ -3,12 +3,12 @@ from mpl_toolkits.mplot3d import Axes3D
 import numpy as np
 
 
-def plot_1d(s, ax=None):
+def plot_1d(s, ax=None, **kwargs):
     """Plot a one-dimensional spline."""
     if ax is None:
         ax = plt.gca()
     times = np.linspace(s.grid[0], s.grid[-1], 200, endpoint=True)
-    ax.plot(times, s.evaluate(times))
+    ax.plot(times, s.evaluate(times), **kwargs)
     ax.scatter(s.grid, s.evaluate(s.grid), marker='x', c='black')
 
 
