@@ -192,14 +192,14 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline2(
         .into_box()
 }
 
-/// Creates a one-dimensional shape-preserving cubic spline.
+/// Creates a one-dimensional piecewise monotone cubic spline.
 ///
 /// # Safety
 ///
 /// All input pointers must be valid for the corresponding `*_count` numbers
 /// of elements (not bytes).
 #[no_mangle]
-pub unsafe extern "C" fn asdf_shapepreservingcubicspline(
+pub unsafe extern "C" fn asdf_piecewisemonotonecubicspline(
     values: *const f32,
     values_count: size_t,
     grid: *const f32,
@@ -208,17 +208,17 @@ pub unsafe extern "C" fn asdf_shapepreservingcubicspline(
 ) -> Option<Box<AsdfCubicCurve1>> {
     let values = slice::from_raw_parts(values, values_count);
     let grid = slice::from_raw_parts(grid, grid_count);
-    PiecewiseCubicCurve::new_shape_preserving(values, grid, closed).into_box()
+    PiecewiseCubicCurve::new_piecewise_monotone(values, grid, closed).into_box()
 }
 
-/// Creates a one-dimensional shape-preserving cubic spline (given values and slopes).
+/// Creates a one-dimensional piecewise monotone cubic spline (given values and slopes).
 ///
 /// # Safety
 ///
 /// All input pointers must be valid for the corresponding `*_count` numbers
 /// of elements (not bytes).
 #[no_mangle]
-pub unsafe extern "C" fn asdf_shapepreservingcubicspline_with_slopes(
+pub unsafe extern "C" fn asdf_piecewisemonotonecubicspline_with_slopes(
     values: *const f32,
     values_count: size_t,
     slopes: *const f32,
@@ -234,7 +234,7 @@ pub unsafe extern "C" fn asdf_shapepreservingcubicspline_with_slopes(
         .map(|&x| if x.is_nan() { None } else { Some(x) })
         .collect();
     let grid = slice::from_raw_parts(grid, grid_count);
-    PiecewiseCubicCurve::new_shape_preserving_with_slopes(values, slopes, grid, closed).into_box()
+    PiecewiseCubicCurve::new_piecewise_monotone_with_slopes(values, slopes, grid, closed).into_box()
 }
 
 /// Creates a one-dimensional monotone cubic spline.
@@ -420,8 +420,8 @@ pub unsafe extern "C" fn asdf_cubiccurve2_grid(
 ///
 /// # Safety
 ///
-/// The pointer must have been obtained with `asdf_shapepreservingcubicspline()` or
-/// `asdf_shapepreservingcubicspline_with_slopes()`.
+/// The pointer must have been obtained with `asdf_piecewisemonotonecubicspline()` or
+/// `asdf_piecewisemonotonecubicspline_with_slopes()`.
 /// Each pointer can only be freed once.
 /// Passing NULL is allowed.
 #[no_mangle]

@@ -216,7 +216,7 @@ class _CubicCurve1(_FromPtr):
         return _grid(_lib.asdf_cubiccurve1_grid, self._ptr)
 
 
-class ShapePreservingCubicSpline(_CubicCurve1):
+class PiecewiseMonotoneCubicSpline(_CubicCurve1):
 
     def __init__(self, values, *, slopes=None, grid=None, closed=False):
         values, values_ptr = _make_buffer(1, values, 'values')
@@ -225,7 +225,7 @@ class ShapePreservingCubicSpline(_CubicCurve1):
         grid, grid_ptr = _make_buffer(1, grid, 'grid')
         if slopes is None:
             ptr = _ffi.gc(
-                _lib.asdf_shapepreservingcubicspline(
+                _lib.asdf_piecewisemonotonecubicspline(
                     values_ptr, len(values),
                     grid_ptr, len(grid),
                     closed,
@@ -234,7 +234,7 @@ class ShapePreservingCubicSpline(_CubicCurve1):
         else:
             slopes, slopes_ptr = _make_buffer(1, slopes, 'slopes')
             ptr = _ffi.gc(
-                _lib.asdf_shapepreservingcubicspline_with_slopes(
+                _lib.asdf_piecewisemonotonecubicspline_with_slopes(
                     values_ptr, len(values),
                     slopes_ptr, len(slopes),
                     grid_ptr, len(grid),

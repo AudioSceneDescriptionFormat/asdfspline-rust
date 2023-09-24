@@ -31,19 +31,19 @@ pub enum Error {
 }
 
 impl PiecewiseCubicCurve<f32> {
-    pub fn new_shape_preserving(
+    pub fn new_piecewise_monotone(
         values: impl Into<Vec<f32>>,
         grid: impl Into<Vec<f32>>,
         closed: bool,
     ) -> Result<PiecewiseCubicCurve<f32>, Error> {
         let values = values.into();
         let slopes = vec![None; values.len()];
-        PiecewiseCubicCurve::new_shape_preserving_with_slopes(values, slopes, grid, closed)
+        PiecewiseCubicCurve::new_piecewise_monotone_with_slopes(values, slopes, grid, closed)
     }
 }
 
 impl PiecewiseCubicCurve<f32> {
-    pub fn new_shape_preserving_with_slopes(
+    pub fn new_piecewise_monotone_with_slopes(
         values: impl Into<Vec<f32>>,
         optional_slopes: impl AsRef<[Option<f32>]>,
         grid: impl Into<Vec<f32>>,

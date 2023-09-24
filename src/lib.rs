@@ -15,8 +15,8 @@ pub mod centripetalkochanekbartelsspline;
 pub mod cubichermitespline;
 pub mod monotonecubicspline;
 pub mod piecewisecubiccurve;
+pub mod piecewisemonotonecubicspline;
 pub mod quaternion;
-pub mod shapepreservingcubicspline;
 pub mod utilities;
 
 pub use crate::asdfposspline::AsdfPosSpline;

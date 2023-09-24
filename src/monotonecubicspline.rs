@@ -35,9 +35,9 @@ pub enum Error {
     },
 }
 
-impl From<crate::shapepreservingcubicspline::Error> for Error {
-    fn from(e: crate::shapepreservingcubicspline::Error) -> Self {
-        use crate::shapepreservingcubicspline::Error as Other;
+impl From<crate::piecewisemonotonecubicspline::Error> for Error {
+    fn from(e: crate::piecewisemonotonecubicspline::Error) -> Self {
+        use crate::piecewisemonotonecubicspline::Error as Other;
         match e {
             Other::LessThanTwoValues => Self::LessThanTwoValues,
             Other::SlopesVsValues { slopes, values } => Self::SlopesVsValues { slopes, values },
@@ -95,7 +95,7 @@ impl MonotoneCubicSpline {
             return Err(Decreasing);
         }
 
-        // TODO: code re-use with new_shape_preserving_with_slopes()?
+        // TODO: code re-use with new_piecewise_monotone_with_slopes()?
         if values.len() < 2 {
             return Err(LessThanTwoValues);
         }
@@ -130,7 +130,7 @@ impl MonotoneCubicSpline {
             let t1 = grid[grid.len() - 1] + (grid[1] - grid[0]);
             let left = (x0 - x_1) / (t0 - t_1);
             let right = (x1 - x0) / (t1 - t0);
-            use crate::shapepreservingcubicspline::{catmull_rom_slope, fix_slope};
+            use crate::piecewisemonotonecubicspline::{catmull_rom_slope, fix_slope};
             let cyclic_slope =
                 fix_slope(catmull_rom_slope([x_1, x0, x1], [t_1, t0, t1]), left, right);
             if let [ref mut first, .., ref mut last] = optional_slopes.to_mut()[..] {
@@ -141,7 +141,7 @@ impl MonotoneCubicSpline {
             }
         }
         Ok(MonotoneCubicSpline {
-            inner: PiecewiseCubicCurve::new_shape_preserving_with_slopes(
+            inner: PiecewiseCubicCurve::new_piecewise_monotone_with_slopes(
                 values.as_ref(), // NB: Values are copied
                 optional_slopes,
                 grid,
