@@ -1,12 +1,13 @@
 Python bindings for ASDF splines
 ================================
 
-Requirements:
-Rust compiler + Cargo (https://rustup.rs/),
-`cbindgen <https://crates.io/crates/cbindgen>`__ (``cargo install cbindgen``),
-CFFI (https://cffi.readthedocs.io/)
+Requirements: Rust compiler + Cargo (https://rustup.rs/).
 
-Installation::
+Install `cbindgen <https://crates.io/crates/cbindgen>`__::
+
+    cargo install cbindgen
+
+Compile and install Python module::
 
     python -m pip install -e .
 
