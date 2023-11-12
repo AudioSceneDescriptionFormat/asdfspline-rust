@@ -29,6 +29,11 @@ The generated HTML documentation can be accessed via
 `target/doc/asdfspline/index.html` and `target/doc/asdfspline_ffi/index.html`.
 
 
+## Python Bindings
+
+Have a look in the `python/` directory.
+
+
 ## License
 
 MIT OR Apache-2.0

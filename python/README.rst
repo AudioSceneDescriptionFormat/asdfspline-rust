@@ -8,8 +8,16 @@ CFFI (https://cffi.readthedocs.io/)
 
 Installation::
 
-    python3 -m pip install -e .
+    python -m pip install -e .
 
-Run tests (using `pytest <https://docs.pytest.org/>`__))::
+Run tests (using `pytest <https://docs.pytest.org/>`__)::
 
-    python3 -m pytest
+    python -m pytest
+
+
+Examples
+^^^^^^^^
+
+A few Jupyter notebooks are available in the ``examples/`` directory.
+You can also play with them online at:
+https://mybinder.org/v2/gh/AudioSceneDescriptionFormat/asdfspline-rust/master?labpath=python/examples

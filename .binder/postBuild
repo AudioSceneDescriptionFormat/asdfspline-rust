@@ -1,0 +1,15 @@
+#!/bin/sh
+
+set -e
+
+# This is taken from https://github.com/evcxr/evcxr/tree/main/binder:
+curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable -y
+
+. $HOME/.cargo/env
+
+cargo install cbindgen
+
+python -m pip install ./python
+
+# We don't need Rust anymore
+rustup self uninstall -y
