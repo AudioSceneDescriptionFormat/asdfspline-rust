@@ -2,8 +2,8 @@
 
 set -e
 
-# This is taken from https://github.com/evcxr/evcxr/tree/main/binder:
-curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable -y
+# This is based on https://github.com/evcxr/evcxr/tree/main/binder:
+curl https://sh.rustup.rs -sSf | sh -s -- --default-toolchain=stable --profile=minimal -y
 
 . $HOME/.cargo/env
 
