@@ -5,11 +5,7 @@ use crate::{
     MonotoneCubicSpline, NormWrapper, PiecewiseCubicCurve, Spline, SplineWithVelocity, Vector,
 };
 
-pub struct ConstantSpeedAdapter<Value, Velocity, Inner, U>
-where
-    Velocity: Vector + NormWrapper<U>,
-    Inner: SplineWithVelocity<Value, Velocity>,
-{
+pub struct ConstantSpeedAdapter<Value, Velocity, Inner, U> {
     inner: Inner,
     grid: Box<[f32]>,
     _phantom_output: PhantomData<Value>,
@@ -74,10 +70,7 @@ where
     }
 }
 
-pub struct NewGridAdapter<Value, Inner>
-where
-    Inner: Spline<Value>,
-{
+pub struct NewGridAdapter<Value, Inner> {
     inner: Inner,
     grid: Box<[f32]>,
     t2u: PiecewiseCubicCurve<f32>, // Created via MonotoneCubicSpline
