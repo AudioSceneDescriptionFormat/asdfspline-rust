@@ -4,7 +4,6 @@ use std::cell::RefCell;
 use std::ffi::CString;
 use std::fmt::Display;
 use std::mem::MaybeUninit;
-use std::slice;
 
 use libc::{c_char, size_t};
 use nalgebra::{Vector2, Vector3};
@@ -57,6 +56,38 @@ pub type AsdfCubicCurve2 = PiecewiseCubicCurve<Vec2>;
 pub type AsdfCubicCurve1 = PiecewiseCubicCurve<f32>;
 pub type AsdfMonotoneCubic = MonotoneCubicSpline;
 
+/// Create slice from pointer and length.
+///
+/// # Safety
+///
+/// If ptr is not NULL, it must be correctly aligned and
+/// point to `len` initialized items of type `T`.
+unsafe fn ffi_slice<'a, T>(ptr: *const T, len: usize) -> &'a [T] {
+    if ptr.is_null() {
+        // NB: `len` is assumed to be 0.
+        &[]
+    } else {
+        // SAFETY: see function docstring.
+        unsafe { std::slice::from_raw_parts(ptr, len) }
+    }
+}
+
+/// Create mutable slice from pointer and length.
+///
+/// # Safety
+///
+/// If ptr is not NULL, it must be correctly aligned and
+/// point to `len` initialized items of type `T`.
+unsafe fn ffi_slice_mut<'a, T>(ptr: *mut T, len: usize) -> &'a mut [T] {
+    if ptr.is_null() {
+        // NB: `len` is assumed to be 0.
+        &mut []
+    } else {
+        // SAFETY: see function docstring.
+        unsafe { std::slice::from_raw_parts_mut(ptr, len) }
+    }
+}
+
 /// Creates an `AsdfPosSpline3`.
 ///
 /// Each element in `positions` (3D coordinates) and `tcb`
@@ -79,20 +110,19 @@ pub unsafe extern "C" fn asdf_asdfposspline3(
     tcb_count: size_t,
     closed: bool,
 ) -> Option<Box<AsdfPosSpline3>> {
-    let positions: Vec<_> =
-        unsafe { slice::from_raw_parts(positions.cast::<[f32; 3]>(), positions_count) }
-            .iter()
-            .map(|coords| Vec3::from_column_slice(coords))
-            .collect();
-    let times: Vec<_> = unsafe { slice::from_raw_parts(times, times_count) }
+    let positions: Vec<_> = unsafe { ffi_slice(positions.cast::<[f32; 3]>(), positions_count) }
+        .iter()
+        .map(|coords| Vec3::from_column_slice(coords))
+        .collect();
+    let times: Vec<_> = unsafe { ffi_slice(times, times_count) }
         .iter()
         .map(|&t| if t.is_nan() { None } else { Some(t) })
         .collect();
-    let speeds: Vec<_> = unsafe { slice::from_raw_parts(speeds, speeds_count) }
+    let speeds: Vec<_> = unsafe { ffi_slice(speeds, speeds_count) }
         .iter()
         .map(|&t| if t.is_nan() { None } else { Some(t) })
         .collect();
-    let tcb = unsafe { slice::from_raw_parts(tcb.cast::<[f32; 3]>(), tcb_count) };
+    let tcb = unsafe { ffi_slice(tcb.cast::<[f32; 3]>(), tcb_count) };
     AsdfPosSpline3::new(positions, times, speeds, tcb, closed).into_box()
 }
 
@@ -113,6 +143,7 @@ pub unsafe extern "C" fn asdf_asdfposspline3_free(_: Option<Box<AsdfPosSpline3>>
 /// All pointers must be valid.
 /// `times` contains one `float` per element,
 /// `output` must provide space for *three* `float`s per element.
+/// Pointers can be NULL, but in this case `count` must be 0.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_asdfposspline3_evaluate(
     curve: &mut AsdfPosSpline3,
@@ -120,9 +151,8 @@ pub unsafe extern "C" fn asdf_asdfposspline3_evaluate(
     count: size_t,
     output: *mut f32,
 ) {
-    let times = unsafe { std::slice::from_raw_parts(times, count) };
-    let output =
-        unsafe { std::slice::from_raw_parts_mut(output.cast::<MaybeUninit<[f32; 3]>>(), count) };
+    let times = unsafe { ffi_slice(times, count) };
+    let output = unsafe { ffi_slice_mut(output.cast::<MaybeUninit<[f32; 3]>>(), count) };
     for (time, out) in times.iter().zip(output) {
         *out = MaybeUninit::new(curve.evaluate(*time).into());
     }
@@ -160,12 +190,12 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline3(
     tcb_count: size_t,
     closed: bool,
 ) -> Option<Box<AsdfCubicCurve3>> {
-    let positions = unsafe { slice::from_raw_parts(positions.cast::<[f32; 3]>(), positions_count) };
+    let positions = unsafe { ffi_slice(positions.cast::<[f32; 3]>(), positions_count) };
     let positions: Vec<_> = positions
         .iter()
         .map(|coords| Vec3::from_column_slice(coords))
         .collect();
-    let tcb = unsafe { slice::from_raw_parts(tcb.cast::<[f32; 3]>(), tcb_count) };
+    let tcb = unsafe { ffi_slice(tcb.cast::<[f32; 3]>(), tcb_count) };
     PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed, Vec3::norm)
         .into_box()
 }
@@ -187,12 +217,12 @@ pub unsafe extern "C" fn asdf_centripetalkochanekbartelsspline2(
     tcb_count: size_t,
     closed: bool,
 ) -> Option<Box<AsdfCubicCurve2>> {
-    let positions = unsafe { slice::from_raw_parts(positions.cast::<[f32; 2]>(), positions_count) };
+    let positions = unsafe { ffi_slice(positions.cast::<[f32; 2]>(), positions_count) };
     let positions: Vec<_> = positions
         .iter()
         .map(|coords| Vec2::from_column_slice(coords))
         .collect();
-    let tcb = unsafe { slice::from_raw_parts(tcb.cast::<[f32; 3]>(), tcb_count) };
+    let tcb = unsafe { ffi_slice(tcb.cast::<[f32; 3]>(), tcb_count) };
     PiecewiseCubicCurve::new_centripetal_kochanek_bartels(&positions, tcb, closed, Vec2::norm)
         .into_box()
 }
@@ -211,8 +241,8 @@ pub unsafe extern "C" fn asdf_piecewisemonotonecubicspline(
     grid_count: size_t,
     closed: bool,
 ) -> Option<Box<AsdfCubicCurve1>> {
-    let values = unsafe { slice::from_raw_parts(values, values_count) };
-    let grid = unsafe { slice::from_raw_parts(grid, grid_count) };
+    let values = unsafe { ffi_slice(values, values_count) };
+    let grid = unsafe { ffi_slice(grid, grid_count) };
     PiecewiseCubicCurve::new_piecewise_monotone(values, grid, closed).into_box()
 }
 
@@ -232,13 +262,13 @@ pub unsafe extern "C" fn asdf_piecewisemonotonecubicspline_with_slopes(
     grid_count: size_t,
     closed: bool,
 ) -> Option<Box<AsdfCubicCurve1>> {
-    let values = unsafe { slice::from_raw_parts(values, values_count) };
-    let slopes = unsafe { slice::from_raw_parts(slopes, slopes_count) };
+    let values = unsafe { ffi_slice(values, values_count) };
+    let slopes = unsafe { ffi_slice(slopes, slopes_count) };
     let slopes: Vec<_> = slopes
         .iter()
         .map(|&x| if x.is_nan() { None } else { Some(x) })
         .collect();
-    let grid = unsafe { slice::from_raw_parts(grid, grid_count) };
+    let grid = unsafe { ffi_slice(grid, grid_count) };
     PiecewiseCubicCurve::new_piecewise_monotone_with_slopes(values, slopes, grid, closed).into_box()
 }
 
@@ -256,8 +286,8 @@ pub unsafe extern "C" fn asdf_monotonecubic(
     grid_count: size_t,
     cyclic: bool,
 ) -> Option<Box<AsdfMonotoneCubic>> {
-    let values = unsafe { slice::from_raw_parts(values, values_count) };
-    let grid = unsafe { slice::from_raw_parts(grid, grid_count) };
+    let values = unsafe { ffi_slice(values, values_count) };
+    let grid = unsafe { ffi_slice(grid, grid_count) };
     MonotoneCubicSpline::new(values, grid, cyclic).into_box()
 }
 
@@ -277,13 +307,13 @@ pub unsafe extern "C" fn asdf_monotonecubic_with_slopes(
     grid_count: size_t,
     cyclic: bool,
 ) -> Option<Box<AsdfMonotoneCubic>> {
-    let values = unsafe { slice::from_raw_parts(values, values_count) };
-    let slopes = unsafe { slice::from_raw_parts(slopes, slopes_count) };
+    let values = unsafe { ffi_slice(values, values_count) };
+    let slopes = unsafe { ffi_slice(slopes, slopes_count) };
     let slopes: Vec<_> = slopes
         .iter()
         .map(|&x| if x.is_nan() { None } else { Some(x) })
         .collect();
-    let grid = unsafe { slice::from_raw_parts(grid, grid_count) };
+    let grid = unsafe { ffi_slice(grid, grid_count) };
     MonotoneCubicSpline::with_slopes(values, slopes, grid, cyclic).into_box()
 }
 
@@ -316,6 +346,7 @@ pub unsafe extern "C" fn asdf_monotonecubic_inner(
 /// All pointers must be valid.
 /// `values` contains one `float` per element,
 /// `output` must provide space for one `float` per element.
+/// Pointers can be NULL, but in this case `count` must be 0.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_monotonecubic_get_time(
     curve: &mut AsdfMonotoneCubic,
@@ -323,8 +354,8 @@ pub unsafe extern "C" fn asdf_monotonecubic_get_time(
     count: size_t,
     output: *mut f32,
 ) {
-    let values = unsafe { slice::from_raw_parts(values, count) };
-    let output = unsafe { slice::from_raw_parts_mut(output.cast::<MaybeUninit<_>>(), count) };
+    let values = unsafe { ffi_slice(values, count) };
+    let output = unsafe { ffi_slice_mut(output.cast::<MaybeUninit<_>>(), count) };
     for (val, out) in values.iter().zip(output) {
         *out = MaybeUninit::new(curve.get_time(*val).unwrap_or(std::f32::NAN));
     }
@@ -349,6 +380,7 @@ pub unsafe extern "C" fn asdf_cubiccurve3_free(_: Option<Box<AsdfCubicCurve3>>) 
 /// All pointers must be valid.
 /// `times` contains one `float` per element,
 /// `output` must provide space for *three* `float`s per element.
+/// Pointers can be NULL, but in this case `count` must be 0.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_cubiccurve3_evaluate(
     curve: &mut AsdfCubicCurve3,
@@ -356,9 +388,8 @@ pub unsafe extern "C" fn asdf_cubiccurve3_evaluate(
     count: size_t,
     output: *mut f32,
 ) {
-    let times = unsafe { std::slice::from_raw_parts(times, count) };
-    let output =
-        unsafe { std::slice::from_raw_parts_mut(output.cast::<MaybeUninit<[f32; 3]>>(), count) };
+    let times = unsafe { ffi_slice(times, count) };
+    let output = unsafe { ffi_slice_mut(output.cast::<MaybeUninit<[f32; 3]>>(), count) };
     for (time, out) in times.iter().zip(output) {
         *out = MaybeUninit::new(curve.evaluate(*time).into());
     }
@@ -397,6 +428,7 @@ pub unsafe extern "C" fn asdf_cubiccurve2_free(_: Option<Box<AsdfCubicCurve2>>) 
 /// All pointers must be valid.
 /// `times` contains one `float` per element,
 /// `output` must provide space for *two* `float`s per element.
+/// Pointers can be NULL, but in this case `count` must be 0.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_cubiccurve2_evaluate(
     curve: &mut AsdfCubicCurve2,
@@ -404,9 +436,8 @@ pub unsafe extern "C" fn asdf_cubiccurve2_evaluate(
     count: size_t,
     output: *mut f32,
 ) {
-    let times = unsafe { std::slice::from_raw_parts(times, count) };
-    let output =
-        unsafe { std::slice::from_raw_parts_mut(output.cast::<MaybeUninit<[f32; 2]>>(), count) };
+    let times = unsafe { ffi_slice(times, count) };
+    let output = unsafe { ffi_slice_mut(output.cast::<MaybeUninit<[f32; 2]>>(), count) };
     for (time, out) in times.iter().zip(output) {
         *out = MaybeUninit::new(curve.evaluate(*time).into());
     }
@@ -447,6 +478,7 @@ pub unsafe extern "C" fn asdf_cubiccurve1_free(_: Option<Box<AsdfCubicCurve1>>) 
 /// All pointers must be valid.
 /// `times` contains one `float` per element,
 /// `output` must provide space for *one* `float` per element.
+/// Pointers can be NULL, but in this case `count` must be 0.
 #[no_mangle]
 pub unsafe extern "C" fn asdf_cubiccurve1_evaluate(
     curve: &mut AsdfCubicCurve1,
@@ -454,9 +486,8 @@ pub unsafe extern "C" fn asdf_cubiccurve1_evaluate(
     count: size_t,
     output: *mut f32,
 ) {
-    let times = unsafe { std::slice::from_raw_parts(times, count) };
-    let output =
-        unsafe { std::slice::from_raw_parts_mut(output.cast::<MaybeUninit<f32>>(), count) };
+    let times = unsafe { ffi_slice(times, count) };
+    let output = unsafe { ffi_slice_mut(output.cast::<MaybeUninit<f32>>(), count) };
     for (time, out) in times.iter().zip(output) {
         *out = MaybeUninit::new(curve.evaluate(*time));
     }
