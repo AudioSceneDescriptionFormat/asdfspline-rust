@@ -357,7 +357,7 @@ pub unsafe extern "C" fn asdf_monotonecubic_get_time(
     let values = unsafe { ffi_slice(values, count) };
     let output = unsafe { ffi_slice_mut(output.cast::<MaybeUninit<_>>(), count) };
     for (val, out) in values.iter().zip(output) {
-        *out = MaybeUninit::new(curve.get_time(*val).unwrap_or(std::f32::NAN));
+        *out = MaybeUninit::new(curve.get_time(*val).unwrap_or(f32::NAN));
     }
 }
 

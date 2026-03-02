@@ -193,7 +193,7 @@ where
         let mut u_grid = Vec::new();
         let mut u_missing = Vec::new();
         for (i, &u) in inner.grid().iter().enumerate() {
-            if missing_times.iter().any(|&x| x == i) {
+            if missing_times.contains(&i) {
                 u_missing.push(u);
             } else {
                 u_grid.push(u);

@@ -17,7 +17,7 @@ def test_values_errors():
 
 def test_grid_errors():
     with pytest.raises(ValueError, match='NaN.*not allowed in grid'):
-        PiecewiseMonotoneCubicSpline([0, 1], grid=[0, np.NaN])
+        PiecewiseMonotoneCubicSpline([0, 1], grid=[0, np.nan])
     with pytest.raises(ValueError, match='grid.*must be strictly ascending'):
         PiecewiseMonotoneCubicSpline([0, 1], grid=[0, 0])
 

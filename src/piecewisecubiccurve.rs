@@ -24,7 +24,7 @@ impl<V: Vector> PiecewiseCubicCurve<V> {
         let segments = segments.into();
         let grid = grid.into();
         use Error::*;
-        if segments.len() < 1 {
+        if segments.is_empty() {
             return Err(ZeroSegments);
         }
         if segments.len() + 1 != grid.len() {

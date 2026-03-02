@@ -4,6 +4,7 @@ version = "0.0.0"
 authors = ["Matthias Geier <Matthias.Geier@gmail.com>"]
 license = "MIT OR Apache-2.0"
 edition = "2021"
+rust-version = "1.71"
 
 publish = false
 
@@ -12,5 +13,6 @@ members = ["ffi"]
 
 [dependencies]
 superslice = "1"
-thiserror = "1.0"
-nalgebra = "0.32"
+thiserror = "2"
+# 0.34 switches to edition 2024 and MSRV 1.84
+nalgebra = "0.33"

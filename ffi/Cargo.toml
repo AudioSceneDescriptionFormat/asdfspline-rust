@@ -10,6 +10,7 @@ crate-type = ["staticlib"]
 
 [dependencies]
 asdfspline = { path = ".." }
-libc = "*"
+libc = "0.2"
 # This doesn't have to be the same version as used in the main crate:
-nalgebra = "0.32"
+# 0.34 switches to edition 2024 and MSRV 1.84
+nalgebra = "0.33"
