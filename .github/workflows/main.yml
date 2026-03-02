@@ -17,7 +17,7 @@ jobs:
         with:
           toolchain: stable
       - name: Clone Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Run Rust tests
@@ -34,7 +34,7 @@ jobs:
         run: |
           cargo install cbindgen
       - name: Clone Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Set up Python
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Install Rust
@@ -103,7 +103,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clone Git repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Install Rust version ${{ matrix.rust-version }}
